@@ -1,0 +1,22 @@
+.shout-bubble {
+  color: #fff;
+  font-weight: 800;
+  line-height: 1.25;
+  padding: 18px 22px;
+  border: 48px solid transparent;
+  border-image-source: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 736 456'%3E%3Cg transform='translate(48,48)'%3E%3Cpath fill='currentColor' d='M 84 96 C 224 82, 416 82, 556 96 Q 586 88, 578 108 Q 610 118, 592 138 C 600 172, 600 188, 592 244 Q 610 262, 578 272 Q 586 292, 556 284 C 416 298, 224 298, 84 284 Q 54 292, 62 272 Q 30 262, 48 244 C 40 188, 40 172, 48 136 Q 30 118, 62 108 Q 54 88, 84 96 Z'/%3E%3C/g%3E%3C/svg%3E");
+  border-image-slice: 48 fill;
+  border-image-repeat: stretch;
+  display: inline-block;
+  max-width: 60ch;
+  text-align: center;
+  font-size: 18px;
+}
+
+.shout-bubble[data-color] {
+  color: var(--bubble-color, #fff);
+}
+
+.shout-bubble[data-bg] {
+  filter: var(--bubble-bg-filter, none);
+}
