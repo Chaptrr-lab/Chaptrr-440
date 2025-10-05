@@ -1,87 +1,55 @@
-import React, { ReactNode } from 'react';
-import { View, StyleSheet, ImageStyle, ViewStyle } from 'react-native';
-import { Image, ImageContentFit } from 'expo-image';
-import { useTheme } from '@/theme/ThemeProvider';
+import React from 'react';
+import { View, StyleSheet, ViewStyle, ImageStyle, Text } from 'react-native';
+import { Image } from 'expo-image';
 
-interface SafeImageProps {
+type SafeImageProps = {
   uri?: string | null;
-  style?: ImageStyle | ViewStyle;
-  resizeMode?: ImageContentFit;
-  fallback?: ReactNode;
-}
+  style?: ViewStyle | ImageStyle;
+  /** For expo-image this is called contentFit */
+  resizeMode?: 'cover' | 'contain' | 'center' | 'fill' | 'scale-down' | 'none';
+  fallback?: React.ReactNode;
+};
 
-export default function SafeImage({ uri, style, resizeMode = 'cover', fallback }: SafeImageProps) {
-  const { activeTheme } = useTheme();
-  // Guard against empty or invalid URIs
+export default function SafeImage({
+  uri,
+  style,
+  resizeMode = 'cover',
+  fallback,
+}: SafeImageProps) {
+  // nothing to show → fallback box
   if (!uri || typeof uri !== 'string' || uri.trim() === '') {
-    if (__DEV__) {
-      console.warn('SafeImage: Invalid URI detected:', { uri, type: typeof uri });
-    }
     return (
-      <>
-        {fallback || (
-          <View style={[styles.fallback, { backgroundColor: activeTheme.colors.surface }, style]}>
-            {/* Empty fallback - just a colored background */}
-          </View>
-        )}
-      </>
+      <View style={[styles.fallback, style]}>
+        {fallback ?? <Text />}
+      </View>
     );
   }
-  
-  const trimmedUri = uri.trim();
-  
-  // Check if URI is valid (HTTP, file://, content://, or data: URI)
-  const isValidUri = trimmedUri.startsWith('http') || 
-                     trimmedUri.startsWith('file://') || 
-                     trimmedUri.startsWith('content://') || 
-                     trimmedUri.startsWith('data:image/');
-  
-  if (!isValidUri) {
-    if (__DEV__) {
-      console.warn('SafeImage: Invalid URI format detected:', trimmedUri);
-    }
-    return (
-      <>
-        {fallback || (
-          <View style={[styles.fallback, { backgroundColor: activeTheme.colors.surface }, style]}>
-            {/* Invalid URI fallback */}
-          </View>
-        )}
-      </>
-    );
+
+  const trimmed = uri.trim();
+
+  // only allow http/https/file/content/data URIs
+  const isValid =
+    trimmed.startsWith('http') ||
+    trimmed.startsWith('file:') ||
+    trimmed.startsWith('content:') ||
+    trimmed.startsWith('data:image/');
+
+  if (!isValid) {
+    return <View style={[styles.fallback, style]} />;
   }
 
   try {
     return (
-      <Image 
-        source={trimmedUri}
-        style={style}
+      <Image
+        source={{ uri: trimmed }}
+        style={[styles.image, style]}
+        // expo-image uses contentFit instead of resizeMode
         contentFit={resizeMode}
-        onError={(error) => {
-          if (__DEV__) {
-            console.warn('SafeImage: Failed to load image:', { uri: trimmedUri, error });
-          }
-        }}
-        onLoad={() => {
-          if (__DEV__) {
-            console.log('SafeImage: Successfully loaded image:', trimmedUri.substring(0, 50) + '...');
-          }
-        }}
       />
     );
-  } catch (error) {
-    if (__DEV__) {
-      console.warn('SafeImage: Error rendering image:', error);
-    }
-    return (
-      <>
-        {fallback || (
-          <View style={[styles.fallback, { backgroundColor: activeTheme.colors.surface }, style]}>
-            {/* Error fallback */}
-          </View>
-        )}
-      </>
-    );
+  } catch (err) {
+    // On any render error, fall back to a blank box
+    return <View style={[styles.fallback, style]} />;
   }
 }
 
@@ -89,5 +57,9 @@ const styles = StyleSheet.create({
   fallback: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  image: {
+    width: '100%',
+    height: 200,
   },
 });
