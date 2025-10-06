@@ -38,9 +38,9 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
   // Compute per-item alignment via alignSelf
   const wrapStyle = [
     styles.wrap,
-    alignment === 'left' ? { alignSelf: 'flex-start' } :
-    alignment === 'right' ? { alignSelf: 'flex-end' } :
-                            { alignSelf: 'center' }
+    alignment === 'left' ? { alignSelf: 'flex-start' as const } :
+    alignment === 'right' ? { alignSelf: 'flex-end' as const } :
+                            { alignSelf: 'center' as const }
   ];
   
   // Determine text alignment within bubble
@@ -118,7 +118,7 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
   
   const getTextStyle = () => {
     let fontSize = 16;
-    let fontWeight = isBold ? '700' : '400';
+    let fontWeight: '400' | '700' = isBold ? '700' : '400';
     
     if (bubbleType === 'thinking') {
       fontSize = 15;
@@ -129,8 +129,8 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
       color: '#fff',
       fontSize,
       fontWeight,
-      fontStyle: isItalic ? 'italic' : 'normal',
-      textAlign,
+      fontStyle: (isItalic ? 'italic' : 'normal') as 'italic' | 'normal',
+      textAlign: textAlign as 'left' | 'center' | 'right',
       lineHeight: fontSize * 1.3,
     };
   };
@@ -346,7 +346,7 @@ const ImageRenderer = memo(function ImageRenderer({ block }: { block: Block }) {
     ]}>
       <SafeImage 
         uri={block.content}
-        style={[styles.image, { width: renderW, height: renderH }]}
+        style={[styles.image, { width: renderW, height: renderH }] as any}
         resizeMode="contain"
         fallback={
           <View style={[

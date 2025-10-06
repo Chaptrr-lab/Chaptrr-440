@@ -26,7 +26,7 @@ export default function NewChapterScreen() {
     const createAndRedirect = async () => {
       try {
         console.log('Creating new chapter for project:', projectId);
-        const result = createChapter(projectId, { title: '' });
+        const result = await createChapter(projectId, { title: '' });
         console.log('New chapter created:', result.id);
         
         // Navigate to the edit screen for the new chapter

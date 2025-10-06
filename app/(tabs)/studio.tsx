@@ -240,7 +240,7 @@ export default function StudioScreen() {
       const dbProjects = await listProjects();
       setUserProjects(dbProjects);
       
-      router.push(`/create/project/${result.id}`);
+      router.push(`/create/project/${result.id}` as any);
     } catch (error) {
       console.error('Error creating project:', error);
     }

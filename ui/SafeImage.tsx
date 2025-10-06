@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle, ImageStyle, Text } from 'react-native';
-import { Image } from 'expo-image';
+import { Image, ImageContentFit } from 'expo-image';
 
 type SafeImageProps = {
   uri?: string | null;
@@ -39,12 +39,18 @@ export default function SafeImage({
   }
 
   try {
+    // Convert resizeMode to ImageContentFit
+    const contentFit: ImageContentFit = resizeMode === 'center' ? 'contain' : 
+                                      resizeMode === 'fill' ? 'fill' :
+                                      resizeMode === 'scale-down' ? 'scale-down' :
+                                      resizeMode === 'none' ? 'none' :
+                                      resizeMode === 'contain' ? 'contain' : 'cover';
+    
     return (
       <Image
         source={{ uri: trimmed }}
-        style={[styles.image, style]}
-        // expo-image uses contentFit instead of resizeMode
-        contentFit={resizeMode}
+        style={[styles.image, style] as ImageStyle}
+        contentFit={contentFit}
       />
     );
   } catch (err) {

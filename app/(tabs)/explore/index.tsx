@@ -106,7 +106,7 @@ const FeedCard = memo(function FeedCard({ post, onLike, onSubscribe, onBookmark,
                   <SafeImage 
                     key={follower.id}
                     uri={follower.avatar} 
-                    style={[styles.followerAvatar, { marginLeft: idx > 0 ? -8 : 0 }]}
+                    style={[styles.followerAvatar, { marginLeft: idx > 0 ? -8 : 0 }] as any}
                     resizeMode="cover"
                     fallback={<View style={[styles.followerAvatar, { backgroundColor: '#666', marginLeft: idx > 0 ? -8 : 0 }]} />}
                   />

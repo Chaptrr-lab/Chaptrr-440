@@ -1,6 +1,6 @@
 import { Block } from '@/types';
 import { Platform, Alert, Share } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export function toNovelTxt(blocks: Block[]): string {
   return blocks
