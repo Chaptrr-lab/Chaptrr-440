@@ -31,7 +31,7 @@ export default function ReaderScreen() {
   const headerOpacity = useRef(new Animated.Value(1)).current;
   const lastScrollY = useRef(0);
   const insets = useSafeAreaInsets();
-  const { currentProject } = useAppStore();
+  const { currentProject, currentChapterIndex, setCurrentChapterIndex } = useAppStore();
 
   useEffect(() => {
     const loadData = async () => {
@@ -120,9 +120,9 @@ export default function ReaderScreen() {
     );
   }
 
-  const firstChapter = currentProject.chapters[0];
+  const currentChapter = currentProject.chapters[currentChapterIndex] ?? currentProject.chapters[0];
 
-  if (!firstChapter) {
+  if (!currentChapter) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.errorContainer}>
@@ -147,10 +147,10 @@ export default function ReaderScreen() {
         
         <View style={styles.headerInfo}>
           <Text style={styles.chapterTitle} numberOfLines={1}>
-            {firstChapter.title}
+            {currentChapter.title}
           </Text>
           <Text style={styles.chapterMeta}>
-            {currentProject.title} • {firstChapter.readTime}m read
+            {currentProject.title} • {currentChapter.readTime}m read
           </Text>
         </View>
 
@@ -180,19 +180,19 @@ export default function ReaderScreen() {
         scrollEventThrottle={16}
       >
         <View style={styles.chapterContent}>
-          <Text style={styles.chapterTitleLarge}>{firstChapter.title}</Text>
+          <Text style={styles.chapterTitleLarge}>{currentChapter.title}</Text>
           
           <ChapterReader
-            blocks={(firstChapter.blocks || []).sort((a, b) => a.order - b.order)}
+            blocks={(currentChapter.blocks || []).sort((a, b) => a.order - b.order)}
             characters={characters}
-            globalSpacing={firstChapter.globalSpacing || 0}
+            globalSpacing={currentChapter.globalSpacing || 0}
             debug={false}
           />
           
-          {firstChapter.afterNote && (
+          {currentChapter.afterNote && (
             <View style={styles.afterNoteContainer}>
               <Text style={styles.afterNoteTitle}>Author&apos;s Note</Text>
-              <Text style={styles.afterNoteText}>{firstChapter.afterNote}</Text>
+              <Text style={styles.afterNoteText}>{currentChapter.afterNote}</Text>
             </View>
           )}
         </View>
@@ -212,7 +212,20 @@ export default function ReaderScreen() {
               />
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.nextChapterButton}>
+            <TouchableOpacity
+              style={[
+                styles.nextChapterButton,
+                currentChapterIndex >= currentProject.chapters.length - 1 && { opacity: 0.4 }
+              ]}
+              onPress={() => {
+                const nextIndex = currentChapterIndex + 1;
+                if (nextIndex < currentProject.chapters.length) {
+                  setCurrentChapterIndex(nextIndex);
+                  scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+                }
+              }}
+              disabled={currentChapterIndex >= currentProject.chapters.length - 1}
+            >
               <Text style={styles.nextChapterButtonText}>Next Chapter</Text>
               <ChevronRight size={20} color="#fff" />
             </TouchableOpacity>
