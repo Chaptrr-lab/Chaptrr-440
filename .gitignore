@@ -37,3 +37,9 @@ yarn-error.*
 .vercel
 .expo/
 .env
+
+ios/
+android/
+core
+node_modules
+.expo
