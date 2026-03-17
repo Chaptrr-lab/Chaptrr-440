@@ -38,6 +38,7 @@ export default function StudioLayout() {
       />
       <Stack.Screen name="analytics" options={{ headerShown: false }} />
       <Stack.Screen name="broadcast-room" options={{ headerShown: false }} />
+      <Stack.Screen name="stories-trash" options={{ headerShown: false }} />
     </Stack>
   );
 }

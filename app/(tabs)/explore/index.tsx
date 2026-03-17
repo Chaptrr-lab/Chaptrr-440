@@ -390,7 +390,7 @@ export default function ExploreScreen() {
   }, [bookmarkedProjects]);
 
   const handleSearchPress = () => {
-    router.push('/explore/search');
+    router.push('/(tabs)/explore/search');
   };
 
   const handleMenuPress = () => {
