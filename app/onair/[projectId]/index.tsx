@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useAppStore } from '@/store/app-store';
+import { goBackOrFallback } from '@/lib/navigation';
 import { ArrowLeft } from 'lucide-react-native';
 
 export default function OnAirScreen() {
@@ -122,7 +123,7 @@ export default function OnAirScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.container}>
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/onair')}>
               <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>On Air</Text>
@@ -145,7 +146,7 @@ export default function OnAirScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/onair')}>
             <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>On Air</Text>

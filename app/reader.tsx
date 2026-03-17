@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChapterReader } from '@/components/reader/ChapterReader';
 import { useAppStore } from '@/store/app-store';
 import { listCharacters } from '@/lib/database';
+import { goBackOrFallback } from '@/lib/navigation';
 import { Character } from '@/types';
 
 export default function ReaderScreen() {
@@ -50,7 +51,7 @@ export default function ReaderScreen() {
       }
     };
 
-    loadData();
+    void loadData();
   }, [currentProject]);
 
   const handleScroll = (event: any) => {
@@ -112,7 +113,7 @@ export default function ReaderScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>No project selected</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/(tabs)/explore')}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -127,7 +128,7 @@ export default function ReaderScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>No chapters available</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/(tabs)/explore')}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -141,7 +142,7 @@ export default function ReaderScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       
       <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
-        <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.headerButton} onPress={() => goBackOrFallback(router, '/(tabs)/explore')}>
           <ArrowLeft size={24} color="#fff" />
         </TouchableOpacity>
         

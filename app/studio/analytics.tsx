@@ -11,8 +11,7 @@ import { ArrowLeft, Coins, DollarSign, TrendingUp, Eye, Heart, BookOpen } from '
 import { router, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeProvider';
-
-const COINS_TO_USD = 100;
+import { goBackOrFallback } from '@/lib/navigation';
 
 interface EarningsCardProps {
   title: string;
@@ -81,11 +80,6 @@ export default function AnalyticsScreen() {
     { id: '5', storyTitle: 'Minimalist Journey', chapterTitle: 'The 100-Item Challenge', coins: 520, reads: 260 },
   ];
 
-  const handleCoinBalance = () => {
-    // Stub: Open coin management modal
-    console.log('Open coin management');
-  };
-
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -93,7 +87,7 @@ export default function AnalyticsScreen() {
         <StatusBar barStyle={activeTheme.colors.background === '#000000' ? 'light-content' : 'dark-content'} backgroundColor={activeTheme.colors.background} />
       
       <View style={[styles.header, { borderBottomColor: activeTheme.colors.border }]}>
-        <TouchableOpacity style={styles.backIcon} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backIcon} onPress={() => goBackOrFallback(router, '/(tabs)/studio')}>
           <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: activeTheme.colors.text.primary }]}>Income & Performance</Text>

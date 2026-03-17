@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { useTheme } from '@/theme/ThemeProvider';
+import { goBackOrFallback } from '@/lib/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChevronDown } from 'lucide-react-native';
@@ -46,7 +47,7 @@ export default function BroadcastRoomScreen() {
         setLoading(false);
       }
     };
-    loadProjects();
+    void loadProjects();
   }, []);
 
   const handleSelectProject = (project: ProjectListItem) => {
@@ -204,7 +205,7 @@ export default function BroadcastRoomScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/(tabs)/studio')}>
           <Text style={{ color: activeTheme.colors.text.primary, fontSize: 16 }}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Studio</Text>

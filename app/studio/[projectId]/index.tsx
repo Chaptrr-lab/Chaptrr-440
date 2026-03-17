@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/theme/ThemeProvider';
 import { ArrowLeft, Radio } from 'lucide-react-native';
 import { getProject } from '@/lib/database';
+import { goBackOrFallback } from '@/lib/navigation';
 import { Project } from '@/types';
 
 export default function StudioProjectScreen() {
@@ -25,7 +26,7 @@ export default function StudioProjectScreen() {
         setLoading(false);
       }
     };
-    loadProject();
+    void loadProject();
   }, [projectId]);
 
   const handleBroadcast = () => {
@@ -126,7 +127,7 @@ export default function StudioProjectScreen() {
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => goBackOrFallback(router, '/(tabs)/studio')}
           >
             <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
           </TouchableOpacity>

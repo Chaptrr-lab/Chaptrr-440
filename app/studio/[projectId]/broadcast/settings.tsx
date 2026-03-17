@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeProvider';
+import { goBackOrFallback } from '@/lib/navigation';
 import { FileText, Download, ArrowLeft } from 'lucide-react-native';
 import { getProject, getBroadcastData } from '@/lib/database';
 import { toNovelTxt, toBackupJSONL, exportFile } from '@/lib/exporters';
@@ -153,7 +154,7 @@ export default function BroadcastSettingsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/(tabs)/studio')}>
             <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Broadcast Settings</Text>

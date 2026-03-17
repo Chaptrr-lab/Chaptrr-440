@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useAppStore } from '@/store/app-store';
+import { goBackOrFallback } from '@/lib/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Eye, Heart, Edit3, ArrowLeft } from 'lucide-react-native';
 
@@ -137,7 +138,7 @@ export default function OnAirScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/(tabs)/studio')}>
           <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>On Air</Text>

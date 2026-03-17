@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { Stack, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app-store';
 import { useTheme } from '@/theme/ThemeProvider';
+import { goBackOrFallback } from '@/lib/navigation';
 import SafeImage from '@/ui/SafeImage';
 import { ArrowLeft, Clock } from 'lucide-react-native';
 
@@ -31,11 +32,7 @@ export default function UpdatesScreen() {
   const { projects, setCurrentProject } = useAppStore();
   const { activeTheme } = useTheme();
 
-  useEffect(() => {
-    loadUpdates();
-  }, [projects]);
-
-  const loadUpdates = () => {
+  const loadUpdates = useCallback(() => {
     // Mock recent chapter updates from subscribed stories
     const mockUpdates: UpdateItem[] = [
       {
@@ -85,7 +82,11 @@ export default function UpdatesScreen() {
       },
     ];
     setUpdates(mockUpdates);
-  };
+  }, [projects]);
+
+  useEffect(() => {
+    loadUpdates();
+  }, [loadUpdates]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -142,7 +143,7 @@ export default function UpdatesScreen() {
           headerTintColor: activeTheme.colors.text.primary,
           headerTitleStyle: { fontWeight: '700' },
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => goBackOrFallback(router, '/(tabs)/library')} style={styles.backButton}>
               <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
             </TouchableOpacity>
           ),

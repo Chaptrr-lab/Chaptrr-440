@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeProvider';
+import { goBackOrFallback } from '@/lib/navigation';
 import { ArrowLeft, Upload, Settings, Edit, Send, GripVertical } from 'lucide-react-native';
-import * as ImagePicker from 'expo-image-picker';
 import SafeImage from '@/ui/SafeImage';
 import { getProject, getBroadcastData, updateBroadcastData } from '@/lib/database';
-import { Project, Chapter } from '@/types';
+import { Project } from '@/types';
 
 export default function BroadcastRoomScreen() {
   const { activeTheme } = useTheme();
@@ -47,10 +47,10 @@ export default function BroadcastRoomScreen() {
         setLoading(false);
       }
     };
-    loadData();
+    void loadData();
   }, [projectId]);
 
-  const saveBroadcastData = async () => {
+  const saveBroadcastData = useCallback(async () => {
     if (!projectId) return;
     try {
       await updateBroadcastData(projectId, {
@@ -63,14 +63,14 @@ export default function BroadcastRoomScreen() {
     } catch (error) {
       console.error('Error saving broadcast data:', error);
     }
-  };
+  }, [coverUrl, projectId, queue, shortDesc, tags]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      saveBroadcastData();
+      void saveBroadcastData();
     }, 1000);
     return () => clearTimeout(timer);
-  }, [coverUrl, shortDesc, tags, queue]);
+  }, [saveBroadcastData]);
 
 
 
@@ -346,19 +346,12 @@ export default function BroadcastRoomScreen() {
     .map(chapterId => project?.chapters.find(c => c.id === chapterId))
     .filter((chapter): chapter is NonNullable<typeof chapter> => chapter !== null && chapter !== undefined);
 
-  const handleReorderQueue = (fromIndex: number, toIndex: number) => {
-    const newQueue = [...queue];
-    const [removed] = newQueue.splice(fromIndex, 1);
-    newQueue.splice(toIndex, 0, removed);
-    setQueue(newQueue);
-  };
-
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/(tabs)/studio')}>
             <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Broadcast Room</Text>

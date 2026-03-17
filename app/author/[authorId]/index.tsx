@@ -8,10 +8,10 @@ import {
   FlatList,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app-store';
 import { useTheme } from '@/theme/ThemeProvider';
 import SafeImage from '@/ui/SafeImage';
+import { goBackOrFallback } from '@/lib/navigation';
 import { ArrowLeft, UserPlus, UserCheck } from 'lucide-react-native';
 import { Creator, Project } from '@/types';
 import { mockCreators } from '@/data/mock-data';
@@ -21,7 +21,6 @@ export default function AuthorProfileScreen() {
   const [author, setAuthor] = useState<Creator | null>(null);
   const [authorProjects, setAuthorProjects] = useState<Project[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
-  const insets = useSafeAreaInsets();
   const { projects, setCurrentProject } = useAppStore();
   const { activeTheme } = useTheme();
 
@@ -54,7 +53,7 @@ export default function AuthorProfileScreen() {
             headerTintColor: activeTheme.colors.text.primary,
             headerTitleStyle: { fontWeight: '700' },
             headerLeft: () => (
-              <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <TouchableOpacity onPress={() => goBackOrFallback(router, '/(tabs)/explore')} style={styles.backButton}>
                 <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
               </TouchableOpacity>
             ),
@@ -108,7 +107,7 @@ export default function AuthorProfileScreen() {
           headerTintColor: activeTheme.colors.text.primary,
           headerTitleStyle: { fontWeight: '700' },
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => goBackOrFallback(router, '/(tabs)/explore')} style={styles.backButton}>
               <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
             </TouchableOpacity>
           ),

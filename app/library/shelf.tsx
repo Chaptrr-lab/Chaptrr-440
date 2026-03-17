@@ -10,6 +10,7 @@ import {
 import { Stack, router } from 'expo-router';
 import { useAppStore } from '@/store/app-store';
 import { useTheme } from '@/theme/ThemeProvider';
+import { goBackOrFallback } from '@/lib/navigation';
 import SafeImage from '@/ui/SafeImage';
 import { ArrowLeft, Clock, BookMarked, Heart, Bookmark } from 'lucide-react-native';
 
@@ -82,13 +83,13 @@ export default function ShelfScreen() {
   }, [activeTab, projects]);
 
   useEffect(() => {
-    loadItems();
+    void loadItems();
   }, [loadItems]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
-    loadItems();
+    await loadItems();
     setRefreshing(false);
   };
 
@@ -155,7 +156,7 @@ export default function ShelfScreen() {
           headerTintColor: activeTheme.colors.text.primary,
           headerTitleStyle: { fontWeight: '700' },
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => goBackOrFallback(router, '/(tabs)/library')} style={styles.backButton}>
               <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
             </TouchableOpacity>
           ),

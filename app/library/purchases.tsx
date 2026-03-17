@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native
 import { Stack, router } from 'expo-router';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useAppStore } from '@/store/app-store';
+import { goBackOrFallback } from '@/lib/navigation';
 import SafeImage from '@/ui/SafeImage';
 import { ArrowLeft } from 'lucide-react-native';
 
@@ -100,7 +101,7 @@ export default function PurchasesScreen() {
           headerTintColor: activeTheme.colors.text.primary,
           headerTitleStyle: { fontWeight: '700' },
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => goBackOrFallback(router, '/(tabs)/library')} style={styles.backButton}>
               <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
             </TouchableOpacity>
           ),

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert,
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeProvider';
+import { goBackOrFallback } from '@/lib/navigation';
 import { getProject } from '@/lib/database';
 import { Plus, X, ArrowDown, ArrowRight, Save, ArrowLeft } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -37,7 +38,7 @@ export default function IntroEditorScreen() {
         setLoading(false);
       }
     };
-    loadProject();
+    void loadProject();
   }, [projectId]);
 
   const handleAddImage = async () => {
@@ -262,7 +263,7 @@ export default function IntroEditorScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/(tabs)/studio')}>
             <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Intro Editor</Text>

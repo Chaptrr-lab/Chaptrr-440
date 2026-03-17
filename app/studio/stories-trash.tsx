@@ -13,6 +13,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listProjects, updateProject } from '@/lib/database';
 import { useTheme } from '@/theme/ThemeProvider';
+import { goBackOrFallback } from '@/lib/navigation';
 
 export default function StoriesTrashBinScreen() {
   const [trashedStories, setTrashedStories] = useState<any[]>([]);
@@ -54,7 +55,7 @@ export default function StoriesTrashBinScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadTrashedStories();
+      void loadTrashedStories();
     }, [loadTrashedStories])
   );
 
@@ -109,7 +110,7 @@ export default function StoriesTrashBinScreen() {
       <StatusBar barStyle={activeTheme.colors.background === '#000000' ? 'light-content' : 'dark-content'} backgroundColor={activeTheme.colors.background} />
       
       <View style={[styles.header, { borderBottomColor: activeTheme.colors.border }]}>
-        <TouchableOpacity style={styles.backIcon} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backIcon} onPress={() => goBackOrFallback(router, '/(tabs)/studio')}>
           <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: activeTheme.colors.text.primary }]}>Stories Trash Bin</Text>
