@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Animated,
   TextInput,
 } from 'react-native';
-import { ArrowLeft, ArrowUp, Heart, Bookmark, Settings, Globe, Type, Eye, Headphones, BookText, MessageCircle, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, ArrowUp, Heart, Bookmark, Settings, Globe, Type, Eye, Headphones, BookText, MessageCircle, ChevronRight, X } from 'lucide-react-native';
 import { router, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChapterReader } from '@/components/reader/ChapterReader';
@@ -29,6 +29,13 @@ export default function ReaderScreen() {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [comment, setComment] = useState('');
   const headerOpacity = useRef(new Animated.Value(1)).current;
+
+  // Chapter end sequence state
+  const [hookRating, setHookRating] = useState<'hooked' | 'interesting' | 'not-for-me' | null>(null);
+  const [countdownActive, setCountdownActive] = useState(false);
+  const [countdownValue, setCountdownValue] = useState(5);
+  const countdownProgress = useRef(new Animated.Value(0)).current;
+  const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastScrollY = useRef(0);
   const insets = useSafeAreaInsets();
   const { currentProject, currentChapterIndex, setCurrentChapterIndex } = useAppStore();
@@ -89,6 +96,66 @@ export default function ReaderScreen() {
   const handleBookmark = () => {
     setIsBookmarked(!isBookmarked);
   };
+
+  const goToNextChapter = useCallback(() => {
+    if (!currentProject) return;
+    const nextIndex = currentChapterIndex + 1;
+    if (nextIndex < currentProject.chapters.length) {
+      setCurrentChapterIndex(nextIndex);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+      setHookRating(null);
+      setCountdownActive(false);
+      setCountdownValue(5);
+      countdownProgress.setValue(0);
+    }
+  }, [currentProject, currentChapterIndex, setCurrentChapterIndex, countdownProgress]);
+
+  const startCountdown = useCallback(() => {
+    setCountdownActive(true);
+    setCountdownValue(5);
+    countdownProgress.setValue(0);
+    Animated.timing(countdownProgress, {
+      toValue: 1,
+      duration: 5000,
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (finished) goToNextChapter();
+    });
+    let remaining = 4;
+    countdownTimer.current = setInterval(() => {
+      setCountdownValue(v => {
+        if (v <= 1) {
+          if (countdownTimer.current) clearInterval(countdownTimer.current);
+          return 0;
+        }
+        return v - 1;
+      });
+      remaining--;
+      if (remaining < 0 && countdownTimer.current) clearInterval(countdownTimer.current);
+    }, 1000);
+  }, [countdownProgress, goToNextChapter]);
+
+  const cancelCountdown = useCallback(() => {
+    if (countdownTimer.current) clearInterval(countdownTimer.current);
+    countdownProgress.stopAnimation();
+    countdownProgress.setValue(0);
+    setCountdownActive(false);
+    setCountdownValue(5);
+  }, [countdownProgress]);
+
+  const handleHookRating = useCallback((rating: 'hooked' | 'interesting' | 'not-for-me') => {
+    setHookRating(rating);
+    if (rating !== 'not-for-me' && currentProject && currentChapterIndex < currentProject.chapters.length - 1) {
+      startCountdown();
+    }
+  }, [currentProject, currentChapterIndex, startCountdown]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownTimer.current) clearInterval(countdownTimer.current);
+    };
+  }, []);
 
   const handleSubmitComment = () => {
     if (comment.trim()) {
@@ -197,69 +264,115 @@ export default function ReaderScreen() {
           )}
         </View>
 
+        {/* Chapter End Sequence */}
         <View style={styles.footer}>
-          <Text style={styles.footerTitle}>End of Chapter</Text>
-          
-          <View style={styles.footerActions}>
-            <TouchableOpacity 
-              style={[styles.heartButton, isLiked && styles.heartButtonLiked]} 
-              onPress={handleLike}
-            >
-              <Heart 
-                size={24} 
-                color={isLiked ? "#ef4444" : "#fff"} 
-                fill={isLiked ? "#ef4444" : "transparent"}
-              />
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[
-                styles.nextChapterButton,
-                currentChapterIndex >= currentProject.chapters.length - 1 && { opacity: 0.4 }
-              ]}
-              onPress={() => {
-                const nextIndex = currentChapterIndex + 1;
-                if (nextIndex < currentProject.chapters.length) {
-                  setCurrentChapterIndex(nextIndex);
-                  scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-                }
-              }}
-              disabled={currentChapterIndex >= currentProject.chapters.length - 1}
-            >
-              <Text style={styles.nextChapterButtonText}>Next Chapter</Text>
-              <ChevronRight size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
+          {/* Hook rating — always shown at end of chapter */}
+          {!hookRating && (
+            <View style={styles.hookRatingSection}>
+              <Text style={styles.hookRatingTitle}>Did this story hook you?</Text>
+              <View style={styles.hookRatingButtons}>
+                <TouchableOpacity style={styles.hookBtn} onPress={() => handleHookRating('hooked')}>
+                  <Text style={styles.hookBtnEmoji}>🔥</Text>
+                  <Text style={styles.hookBtnLabel}>I&apos;m hooked</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.hookBtn} onPress={() => handleHookRating('interesting')}>
+                  <Text style={styles.hookBtnEmoji}>🙂</Text>
+                  <Text style={styles.hookBtnLabel}>It&apos;s interesting</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.hookBtn, styles.hookBtnNeutral]} onPress={() => handleHookRating('not-for-me')}>
+                  <Text style={styles.hookBtnEmoji}>😐</Text>
+                  <Text style={styles.hookBtnLabelMuted}>Not for me</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
+          {/* Next chapter preview + countdown (only if there's a next chapter and rating was given) */}
+          {hookRating && hookRating !== 'not-for-me' && currentChapterIndex < currentProject.chapters.length - 1 && (
+            <View style={styles.nextChapterPreview}>
+              {/* Countdown progress bar */}
+              <View style={styles.countdownBarTrack}>
+                <Animated.View
+                  style={[
+                    styles.countdownBarFill,
+                    {
+                      width: countdownProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0%', '100%'],
+                      }),
+                    },
+                  ]}
+                />
+              </View>
+
+              <Text style={styles.nextChapterUpNext}>Up next</Text>
+              <Text style={styles.nextChapterTitle} numberOfLines={2}>
+                {currentProject.chapters[currentChapterIndex + 1]?.title}
+              </Text>
+              {/* First line preview */}
+              {(() => {
+                const nextCh = currentProject.chapters[currentChapterIndex + 1];
+                const firstBlock = nextCh?.blocks?.[0];
+                return firstBlock?.content ? (
+                  <Text style={styles.nextChapterFirstLine} numberOfLines={2}>{firstBlock.content}</Text>
+                ) : null;
+              })()}
+
+              <View style={styles.countdownControls}>
+                <TouchableOpacity style={styles.startNowBtn} onPress={goToNextChapter}>
+                  <Text style={styles.startNowText}>▶ Start now</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelBtn} onPress={cancelCountdown}>
+                  <X size={16} color="#888" />
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Caught up or rated not-for-me */}
+          {hookRating && (hookRating === 'not-for-me' || currentChapterIndex >= currentProject.chapters.length - 1) && (
+            <View style={styles.caughtUpSection}>
+              {currentChapterIndex >= currentProject.chapters.length - 1 ? (
+                <>
+                  <Text style={styles.caughtUpTitle}>You&apos;re caught up!</Text>
+                  <Text style={styles.caughtUpSubtitle}>Follow the author to get notified when new chapters drop.</Text>
+                </>
+              ) : (
+                <Text style={styles.caughtUpTitle}>Back to your feed</Text>
+              )}
+              <TouchableOpacity
+                style={styles.followAuthorBtn}
+                onPress={() => router.back()}
+              >
+                <Text style={styles.followAuthorBtnText}>
+                  {currentChapterIndex >= currentProject.chapters.length - 1 ? '+ Follow Author' : '← Back to Feed'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Comments section */}
           <View style={styles.commentsSection}>
             <Text style={styles.commentsSectionTitle}>Comments</Text>
-            
             <View style={styles.topComments}>
               <View style={styles.topCommentItem}>
                 <Text style={styles.topCommentAuthor}>Reader123</Text>
                 <Text style={styles.topCommentText}>Great chapter! Can&apos;t wait for the next one.</Text>
                 <Text style={styles.topCommentTime}>2 hours ago</Text>
               </View>
-              
               <View style={styles.topCommentItem}>
                 <Text style={styles.topCommentAuthor}>BookLover</Text>
                 <Text style={styles.topCommentText}>The plot twist was amazing!</Text>
                 <Text style={styles.topCommentTime}>5 hours ago</Text>
               </View>
-              
-              <View style={styles.topCommentItem}>
-                <Text style={styles.topCommentAuthor}>StoryFan</Text>
-                <Text style={styles.topCommentText}>This is so well written!</Text>
-                <Text style={styles.topCommentTime}>8 hours ago</Text>
-              </View>
             </View>
-            
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.moreCommentsButton}
               onPress={() => setCommentsVisible(true)}
             >
               <MessageCircle size={18} color="#6366f1" />
-              <Text style={styles.moreCommentsButtonText}>More Comments (21)</Text>
+              <Text style={styles.moreCommentsButtonText}>Comments (21)</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -684,5 +797,158 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Hook rating
+  hookRatingSection: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 32,
+    paddingHorizontal: 8,
+  },
+  hookRatingTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  hookRatingButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'center',
+  },
+  hookBtn: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  hookBtnNeutral: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  hookBtnEmoji: {
+    fontSize: 22,
+    marginBottom: 6,
+  },
+  hookBtnLabel: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  hookBtnLabelMuted: {
+    color: '#666',
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  // Next chapter preview + countdown
+  nextChapterPreview: {
+    width: '100%',
+    backgroundColor: 'rgba(99,102,241,0.08)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.25)',
+  },
+  countdownBarTrack: {
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 2,
+    marginBottom: 14,
+    overflow: 'hidden',
+  },
+  countdownBarFill: {
+    height: 3,
+    backgroundColor: '#6366f1',
+    borderRadius: 2,
+  },
+  nextChapterUpNext: {
+    color: '#6366f1',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  nextChapterTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  nextChapterFirstLine: {
+    color: '#aaa',
+    fontSize: 14,
+    lineHeight: 20,
+    fontStyle: 'italic',
+    marginBottom: 16,
+  },
+  countdownControls: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  startNowBtn: {
+    flex: 1,
+    backgroundColor: '#6366f1',
+    borderRadius: 22,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  startNowText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  cancelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  cancelBtnText: {
+    color: '#888',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  // Caught up / not-for-me
+  caughtUpSection: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  caughtUpTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  caughtUpSubtitle: {
+    color: '#888',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  followAuthorBtn: {
+    backgroundColor: '#6366f1',
+    borderRadius: 22,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+  },
+  followAuthorBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
