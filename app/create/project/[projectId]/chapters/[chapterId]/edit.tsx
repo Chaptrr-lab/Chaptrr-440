@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getChapter, updateChapter, listCharacters, updateChapterBlocks, addChapterToBroadcastQueue, createChapter as dbCreateChapter, listCustomBubbles, createCustomBubble } from '@/lib/database';
 import { Block, Character, CustomBubble } from '@/types';
 import { BubbleRenderer } from '@/components/bubbles/BubbleRenderer';
+import NovelEditor from '@/components/novel/NovelEditor';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import * as ImagePicker from 'expo-image-picker';
@@ -1187,6 +1188,11 @@ export default function ChapterEditScreen() {
   const [bubbleCapInsets, setBubbleCapInsets] = useState({ top: 20, left: 20, bottom: 20, right: 20 });
   const [bubbleTintable, setBubbleTintable] = useState(false);
 
+  // Novel mode state
+  const [novelMode, setNovelMode] = useState(false);
+  const [novelText, setNovelText] = useState('');
+  const [novelPreview, setNovelPreview] = useState(false);
+
   
   // Load existing chapter and characters
   useEffect(() => {
@@ -1285,12 +1291,18 @@ export default function ChapterEditScreen() {
     
     setIsSaving(true);
     setSaveError(null);
-    
+
     try {
-      console.log('[saveDraft] Starting save draft:', { title, afterNote, blocksCount: blocks.length, projectId, chapterId });
-      
+      // If in novel mode, convert prose to blocks before saving
+      const blocksToSave = novelMode ? novelTextToBlocks(novelText) : blocks;
+      if (novelMode && blocksToSave.length > 0) {
+        setBlocks(blocksToSave);
+      }
+
+      console.log('[saveDraft] Starting save draft:', { title, afterNote, blocksCount: blocksToSave.length, projectId, chapterId });
+
       // Validate blocks have proper spacing values and ensure all required fields
-      const validatedBlocks = blocks.map((block, index) => {
+      const validatedBlocks = blocksToSave.map((block, index) => {
         // Sanitize content to remove control characters that cause syntax errors
         let sanitizedContent = '';
         try {
@@ -1405,7 +1417,7 @@ export default function ChapterEditScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [title, blocks, afterNote, projectId, chapterId, globalSpacing, thumbnail]);
+  }, [title, blocks, afterNote, projectId, chapterId, globalSpacing, thumbnail, novelMode, novelText]);
 
   useEffect(() => {
     // Clear existing timer
@@ -1439,7 +1451,7 @@ export default function ChapterEditScreen() {
       Alert.alert('Validation Error', 'Please enter a chapter title');
       return;
     }
-    if (blocks.length === 0) {
+    if (blocks.length === 0 && (!novelMode || !novelText.trim())) {
       Alert.alert('Validation Error', 'Please add at least one block to your chapter');
       return;
     }
@@ -1566,9 +1578,61 @@ export default function ChapterEditScreen() {
   const getBlockById = (id: string) => {
     return blocks.find(b => b.id === id);
   };
-  
 
-  
+  // Convert novel prose text to Block[] for saving
+  const novelTextToBlocks = (text: string): Block[] => {
+    const segs: Block[] = [];
+    const parts = text.split(/(\"[^\"]+\")/g);
+    let order = 0;
+    for (const part of parts) {
+      if (!part.trim()) continue;
+      if (part.startsWith('"') && part.endsWith('"')) {
+        const content = part.slice(1, -1).trim();
+        if (!content) continue;
+        segs.push({
+          id: `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${order}`,
+          type: 'text', content, order: order++, spacing: 0,
+          textStyle: { bubbleType: content.includes('!') ? 'shout' : 'dialogue', alignment: 'center', isBold: false, isItalic: false },
+        });
+      } else {
+        const paras = part.split(/\n\s*\n/).filter(p => p.trim());
+        for (const para of paras) {
+          segs.push({
+            id: `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${order}`,
+            type: 'text', content: para.trim(), order: order++, spacing: 0,
+            textStyle: { bubbleType: 'plain', alignment: 'center', isBold: false, isItalic: false },
+          });
+        }
+      }
+    }
+    return segs;
+  };
+
+  // Convert existing blocks to novel prose for novel mode
+  const blocksToNovelText = (blks: Block[]): string => {
+    return blks
+      .filter(b => b.type === 'text')
+      .map(b => {
+        const bt = b.textStyle?.bubbleType;
+        if (bt === 'dialogue' || bt === 'shout') return `"${b.content}"`;
+        return b.content;
+      })
+      .join('\n\n');
+  };
+
+  const handleToggleNovelMode = () => {
+    if (!novelMode) {
+      // Entering novel mode — seed from existing blocks
+      setNovelText(blocksToNovelText(blocks));
+    } else {
+      // Leaving novel mode — convert prose back to blocks
+      const converted = novelTextToBlocks(novelText);
+      if (converted.length > 0) setBlocks(converted);
+    }
+    setNovelMode(m => !m);
+    setNovelPreview(false);
+  };
+
   const handleSettingsDelete = () => {
     const blockIndex = blocks.findIndex(b => b.id === activeBlockId);
     if (blockIndex >= 0) {
@@ -1743,7 +1807,7 @@ export default function ChapterEditScreen() {
     }
   };
 
-  const canPublish = title.trim() && blocks.length > 0 && !isSaving;
+  const canPublish = title.trim() && (blocks.length > 0 || (novelMode && novelText.trim())) && !isSaving;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: activeTheme.colors.background }]}>
@@ -1905,79 +1969,104 @@ export default function ChapterEditScreen() {
           <View style={styles.editorArea}>
             <View style={styles.editorHeader}>
               <Text style={[styles.editorTitle, { color: activeTheme.colors.text.primary }]}>Chapter Content</Text>
-              <TouchableOpacity 
-                style={styles.spacingButton}
-                onPress={() => setSpacingMenuVisible(true)}
-                testID="spacingBtn"
-              >
-                <Text style={[styles.spacingButtonText, { color: activeTheme.colors.text.primary }]}>
-                  Spacing ▾ (all: {globalSpacing})
-                </Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                {!novelMode && (
+                  <TouchableOpacity
+                    style={styles.spacingButton}
+                    onPress={() => setSpacingMenuVisible(true)}
+                    testID="spacingBtn"
+                  >
+                    <Text style={[styles.spacingButtonText, { color: activeTheme.colors.text.primary }]}>
+                      Spacing ▾ ({globalSpacing})
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={[styles.spacingButton, novelMode && { borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.12)' }]}
+                  onPress={handleToggleNovelMode}
+                  testID="btnNovelMode"
+                >
+                  <Text style={[styles.spacingButtonText, { color: novelMode ? '#6366f1' : activeTheme.colors.text.primary }]}>
+                    {novelMode ? '📖 Novel' : '⬛ Blocks'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {blocks.length === 0 ? (
-              <View style={[styles.editorPlaceholder, { backgroundColor: activeTheme.colors.surface }]}>
-                <Text style={[styles.editorPlaceholderText, { color: activeTheme.colors.text.muted }]}>
-                  Add text blocks, images, and dialogue bubbles to build your chapter
-                </Text>
+            {novelMode ? (
+              <View style={{ minHeight: 400 }}>
+                <NovelEditor
+                  value={novelText}
+                  onChange={setNovelText}
+                  preview={novelPreview}
+                  onPreviewChange={setNovelPreview}
+                />
               </View>
             ) : (
-              <View style={styles.blocksList}>
-                {blocks.map((block, index) => (
-                  <BlockEditor
-                    key={block.id}
-                    block={block}
-                    index={index}
-                    characters={characters}
-                    blocks={blocks}
-                    onUpdate={handleUpdateBlock}
-                    onDelete={handleDeleteBlock}
-                    onMoveUp={handleMoveBlockUp}
-                    onMoveDown={handleMoveBlockDown}
-                    onOpenSettings={handleOpenSettings}
-                    isActive={activeBlockId === block.id}
-                    onFocus={() => {
-                      console.log('[focus]', block.id);
-                      setActiveBlockId(block.id);
-                    }}
-                    globalSpacing={globalSpacing}
-                    onOpenBubblePicker={(blockId) => {
-                      setActiveBlockId(blockId);
-                      setBubbleTypePickerVisible(true);
-                    }}
-                  />
-                ))}
-              </View>
-            )}
+              <>
+                {blocks.length === 0 ? (
+                  <View style={[styles.editorPlaceholder, { backgroundColor: activeTheme.colors.surface }]}>
+                    <Text style={[styles.editorPlaceholderText, { color: activeTheme.colors.text.muted }]}>
+                      Add text blocks, images, and dialogue bubbles to build your chapter
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.blocksList}>
+                    {blocks.map((block, index) => (
+                      <BlockEditor
+                        key={block.id}
+                        block={block}
+                        index={index}
+                        characters={characters}
+                        blocks={blocks}
+                        onUpdate={handleUpdateBlock}
+                        onDelete={handleDeleteBlock}
+                        onMoveUp={handleMoveBlockUp}
+                        onMoveDown={handleMoveBlockDown}
+                        onOpenSettings={handleOpenSettings}
+                        isActive={activeBlockId === block.id}
+                        onFocus={() => {
+                          setActiveBlockId(block.id);
+                        }}
+                        globalSpacing={globalSpacing}
+                        onOpenBubblePicker={(blockId) => {
+                          setActiveBlockId(blockId);
+                          setBubbleTypePickerVisible(true);
+                        }}
+                      />
+                    ))}
+                  </View>
+                )}
 
-            {/* Add Block toolbar at bottom */}
-            <View style={styles.addBlockToolbar}>
-              <TouchableOpacity 
-                style={[styles.addBlockButton, { borderColor: '#6366f1' }]} 
-                onPress={() => handleAddBlock('text')}
-                testID="btnAddText"
-              >
-                <Type size={16} color="#6366f1" />
-                <Text style={[styles.addBlockText, { color: '#6366f1' }]}>+ Text</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.addBlockButton, { borderColor: '#6366f1' }]} 
-                onPress={() => handleAddBlock('image')}
-                testID="btnAddImage"
-              >
-                <ImageIcon size={16} color="#6366f1" />
-                <Text style={[styles.addBlockText, { color: '#6366f1' }]}>+ Image</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.addBlockButton, { borderColor: '#6366f1' }]} 
-                onPress={() => handleAddBlock('BG')}
-                testID="btnAddBG"
-              >
-                <ImageIcon size={16} color="#6366f1" />
-                <Text style={[styles.addBlockText, { color: '#6366f1' }]}>+ BG</Text>
-              </TouchableOpacity>
-            </View>
+                {/* Add Block toolbar at bottom */}
+                <View style={styles.addBlockToolbar}>
+                  <TouchableOpacity
+                    style={[styles.addBlockButton, { borderColor: '#6366f1' }]}
+                    onPress={() => handleAddBlock('text')}
+                    testID="btnAddText"
+                  >
+                    <Type size={16} color="#6366f1" />
+                    <Text style={[styles.addBlockText, { color: '#6366f1' }]}>+ Text</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.addBlockButton, { borderColor: '#6366f1' }]}
+                    onPress={() => handleAddBlock('image')}
+                    testID="btnAddImage"
+                  >
+                    <ImageIcon size={16} color="#6366f1" />
+                    <Text style={[styles.addBlockText, { color: '#6366f1' }]}>+ Image</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.addBlockButton, { borderColor: '#6366f1' }]}
+                    onPress={() => handleAddBlock('BG')}
+                    testID="btnAddBG"
+                  >
+                    <ImageIcon size={16} color="#6366f1" />
+                    <Text style={[styles.addBlockText, { color: '#6366f1' }]}>+ BG</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
 
           <View style={styles.field}>
