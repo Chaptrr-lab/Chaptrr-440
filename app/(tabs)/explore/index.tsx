@@ -44,113 +44,107 @@ interface FeedCardProps {
   followersWhoEngaged: FollowerWhoEngaged[];
 }
 
-const FeedCard = memo(function FeedCard({ post, onLike, onSubscribe, onBookmark, onOpen, onCardPress, isLiked, isSubscribed, isBookmarked, followersWhoEngaged }: FeedCardProps) {
+// Derive a hook signal label from the post score
+function getHookSignal(score: number, isNew: boolean): { label: string; emoji: string } {
+  if (isNew && score < 0.4) return { emoji: '✨', label: 'Rising story' };
+  if (score >= 0.8) return { emoji: '🔥', label: 'Readers can\'t stop' };
+  if (score >= 0.65) return { emoji: '🔥', label: 'Hooked readers' };
+  if (score >= 0.5) return { emoji: '🔥', label: 'Most readers continue' };
+  if (score >= 0.35) return { emoji: '💎', label: 'Hidden gem' };
+  return { emoji: '✨', label: 'Rising story' };
+}
+
+const FeedCard = memo(function FeedCard({ post, onLike, onSubscribe, onBookmark, onOpen, onCardPress, isLiked, isSubscribed, isBookmarked }: Omit<FeedCardProps, 'followersWhoEngaged'>) {
   const { project } = post;
   const { height: screenHeight } = useWindowDimensions();
-  const cardHeight = screenHeight * 0.7;
+  const cardHeight = screenHeight * 0.72;
+  const isNew = Date.now() - new Date(project.createdAt || 0).getTime() < 7 * 24 * 60 * 60 * 1000;
+  const signal = getHookSignal(post.score, isNew);
 
   return (
     <TouchableOpacity style={[styles.card, { height: cardHeight }]} onPress={onCardPress} activeOpacity={0.95} testID={`feed-card-${post.id}`}>
-      <SafeImage 
-        uri={project.cover} 
+      <SafeImage
+        uri={project.cover}
         style={styles.coverImage}
         resizeMode="cover"
       />
-      
+
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.8)']}
+        colors={['transparent', 'rgba(0,0,0,0.92)']}
         style={styles.gradient}
+        locations={[0.3, 1]}
       />
-      
-      <TouchableOpacity 
+
+      {/* Top: author (no follower count on discovery surface) */}
+      <TouchableOpacity
         style={styles.creatorInfoTopLeft}
-        onPress={(e) => { 
-          e.stopPropagation(); 
+        onPress={(e) => {
+          e.stopPropagation();
           router.push(`/author/${project.creator.id}` as any);
         }}
       >
-        <SafeImage 
-          uri={project.creator.avatar} 
+        <SafeImage
+          uri={project.creator.avatar}
           style={styles.avatarTopLeft}
           resizeMode="cover"
           fallback={<View style={[styles.avatarTopLeft, { backgroundColor: '#666' }]} />}
         />
-        <View style={styles.creatorDetailsTopLeft}>
-          <Text style={styles.creatorNameTopLeft}>{project.creator.name}</Text>
-          <Text style={styles.followersTopLeft}>{project.creator.followers.toLocaleString()} followers</Text>
-        </View>
+        <Text style={styles.creatorNameTopLeft}>{project.creator.name}</Text>
       </TouchableOpacity>
-      
+
+      {/* Wave/signal badge top-right */}
+      <View style={styles.signalBadge}>
+        <Text style={styles.signalBadgeText}>{signal.emoji} {signal.label}</Text>
+      </View>
+
       <View style={styles.cardContent}>
-        <View style={styles.projectInfo}>
-          <Text style={styles.title}>{project.title}</Text>
-          <Text style={styles.shortDescription} numberOfLines={3}>
-            {project.shortDescription || project.description}
-          </Text>
-          
-          <View style={styles.tags}>
-            {project.tags.slice(0, 3).map((tag) => (
-              <View key={tag} style={styles.tag}>
-                <Text style={styles.tagText}>#{tag}</Text>
-              </View>
-            ))}
-          </View>
-          
+        {/* Hook text — dominant element per roadmap */}
+        <Text style={styles.hookText} numberOfLines={3}>
+          {post.hookLine || project.shortDescription || project.description}
+        </Text>
+
+        {/* Title — smaller, secondary */}
+        <Text style={styles.title} numberOfLines={1}>{project.title}</Text>
+
+        {/* Tags */}
+        <View style={styles.tags}>
+          {project.tags.slice(0, 3).map((tag) => (
+            <View key={tag} style={styles.tag}>
+              <Text style={styles.tagText}>#{tag}</Text>
+            </View>
+          ))}
         </View>
 
+        {/* Actions row */}
         <View style={styles.actions}>
-          <View style={styles.leftActions}>
-            {followersWhoEngaged.length > 0 && (
-              <View style={styles.followersEngaged}>
-                {followersWhoEngaged.slice(0, 3).map((follower, idx) => (
-                  <SafeImage 
-                    key={follower.id}
-                    uri={follower.avatar} 
-                    style={[styles.followerAvatar, { marginLeft: idx > 0 ? -8 : 0 }] as any}
-                    resizeMode="cover"
-                    fallback={<View style={[styles.followerAvatar, { backgroundColor: '#666', marginLeft: idx > 0 ? -8 : 0 }]} />}
-                  />
-                ))}
-                {followersWhoEngaged.length > 3 && (
-                  <View style={[styles.followerAvatar, styles.moreFollowers, { marginLeft: -8 }]}>
-                    <Text style={styles.moreFollowersText}>+{followersWhoEngaged.length - 3}</Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-          
-          <View style={styles.rightActions}>
-            <TouchableOpacity 
-              style={styles.iconButton} 
-              onPress={(e) => { e.stopPropagation(); onSubscribe(); }}
-            >
-              <BookMarked 
-                size={20} 
-                color={isSubscribed ? "#6366f1" : "#fff"}
-                fill={isSubscribed ? "#6366f1" : "transparent"}
-              />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.iconButton} 
-              onPress={(e) => { e.stopPropagation(); onBookmark(); }}
-            >
-              <Bookmark 
-                size={20} 
-                color={isBookmarked ? "#f59e0b" : "#fff"}
-                fill={isBookmarked ? "#f59e0b" : "transparent"}
-              />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.openButton} 
-              onPress={(e) => { e.stopPropagation(); onOpen(); }}
-            >
-              <BookOpen size={20} color="#000" />
-              <Text style={styles.openButtonText}>Open</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Read Ch.1 — primary CTA */}
+          <TouchableOpacity
+            style={styles.readButton}
+            onPress={(e) => { e.stopPropagation(); onOpen(); }}
+          >
+            <BookOpen size={16} color="#000" />
+            <Text style={styles.readButtonText}>Read Ch.1</Text>
+          </TouchableOpacity>
+
+          {/* Save */}
+          <TouchableOpacity
+            style={[styles.iconButton, isBookmarked && styles.iconButtonActive]}
+            onPress={(e) => { e.stopPropagation(); onBookmark(); }}
+          >
+            <Bookmark
+              size={20}
+              color={isBookmarked ? '#f59e0b' : '#fff'}
+              fill={isBookmarked ? '#f59e0b' : 'transparent'}
+            />
+          </TouchableOpacity>
+
+          {/* Not for me */}
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={(e) => { e.stopPropagation(); onLike(); }}
+          >
+            <X size={20} color={isLiked ? '#6366f1' : '#aaa'} />
+          </TouchableOpacity>
         </View>
       </View>
     </TouchableOpacity>
@@ -396,7 +390,7 @@ export default function ExploreScreen() {
   }, [bookmarkedProjects]);
 
   const handleSearchPress = () => {
-    router.push('/explore/search');
+    router.push('/(tabs)/explore/search');
   };
 
   const handleMenuPress = () => {
@@ -681,10 +675,10 @@ export default function ExploreScreen() {
               : (mode === 'light' ? styles.feedTabInactiveLight : styles.feedTabInactive)
           ]}
           onPress={() => setActiveTab('new')}
-          testID="tabNew"
+          testID="tabExplore"
         >
           <Text style={[styles.feedTabText, { color: activeTheme.colors.text.secondary }, activeTab === 'new' && { color: activeTheme.colors.text.primary }]}>
-            New
+            Explore
           </Text>
         </TouchableOpacity>
         </View>
@@ -704,7 +698,6 @@ export default function ExploreScreen() {
             isLiked={likedProjects.has(item.project.id)}
             isSubscribed={subscribedProjects.has(item.project.id)}
             isBookmarked={bookmarkedProjects.has(item.project.id)}
-            followersWhoEngaged={getFollowersWhoEngaged(item.project.id)}
           />
         )}
         showsVerticalScrollIndicator={false}
@@ -1003,6 +996,53 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
   },
+  // Hook signal badge (top-right of card)
+  signalBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  signalBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // Hook text — dominant element
+  hookText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 26,
+    marginBottom: 8,
+    fontStyle: 'italic',
+  },
+  // Read Ch.1 button
+  readButton: {
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 22,
+    gap: 6,
+    flex: 1,
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  readButtonText: {
+    color: '#000',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  iconButtonActive: {
+    backgroundColor: 'rgba(245,158,11,0.15)',
+  },
   creatorInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1036,15 +1076,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   title: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 12,
-    lineHeight: 30,
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 10,
   },
   tags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 4,
   },
   tag: {
     backgroundColor: 'rgba(99, 102, 241, 0.2)',
@@ -1062,7 +1103,7 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    marginTop: 12,
   },
   leftActions: {
     flexDirection: 'row',

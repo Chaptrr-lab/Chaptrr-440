@@ -1,6 +1,10 @@
 import React, { useState, useEffect, memo } from 'react';
 import { View, Text, StyleSheet, Dimensions, Image, ScrollView } from 'react-native';
 import ShoutBubble from './ShoutBubble';
+import AnimatedShoutBubble from './AnimatedShoutBubble';
+import LoudBubble from './LoudBubble';
+import MachineBubble from './MachineBubble';
+import BloomBubble from './BloomBubble';
 import SafeImage from '@/ui/SafeImage';
 import { Block, Character } from '@/types';
 
@@ -34,7 +38,8 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
   // Find character
   const character = characters.find(c => c.id === characterId);
   const bubbleColor = character?.color || '#6366f1';
-  
+  const fillColor = '#f5f5f0';
+
   // Compute per-item alignment via alignSelf
   const wrapStyle = [
     styles.wrap,
@@ -67,28 +72,61 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
     return (
       <View style={wrapStyle}>
         {character && (
-          <Text style={[
-            styles.characterName,
-            { 
-              color: bubbleColor,
-              marginBottom: 4,
-            }
-          ]}>
+          <Text style={[styles.characterName, { color: bubbleColor, marginBottom: 4 }]}>
             {character.name}
           </Text>
         )}
-        <ShoutBubble 
-          stroke={bubbleColor}
-          fill={bubbleColor}
-        >
+        <AnimatedShoutBubble fillColor={fillColor}>
           {block.content}
-        </ShoutBubble>
+        </AnimatedShoutBubble>
       </View>
     );
   }
-  
 
-  
+  if (bubbleType === 'loud') {
+    return (
+      <View style={wrapStyle}>
+        {character && (
+          <Text style={[styles.characterName, { color: bubbleColor, marginBottom: 4 }]}>{character.name}</Text>
+        )}
+        <LoudBubble variant="concave" fillColor={fillColor}>{block.content}</LoudBubble>
+      </View>
+    );
+  }
+
+  if (bubbleType === 'loud-convex') {
+    return (
+      <View style={wrapStyle}>
+        {character && (
+          <Text style={[styles.characterName, { color: bubbleColor, marginBottom: 4 }]}>{character.name}</Text>
+        )}
+        <LoudBubble variant="convex" fillColor={fillColor}>{block.content}</LoudBubble>
+      </View>
+    );
+  }
+
+  if (bubbleType === 'machine') {
+    return (
+      <View style={wrapStyle}>
+        {character && (
+          <Text style={[styles.characterName, { color: bubbleColor, marginBottom: 4 }]}>{character.name}</Text>
+        )}
+        <MachineBubble fillColor={fillColor}>{block.content}</MachineBubble>
+      </View>
+    );
+  }
+
+  if (bubbleType === 'bloom') {
+    return (
+      <View style={wrapStyle}>
+        {character && (
+          <Text style={[styles.characterName, { color: bubbleColor, marginBottom: 4 }]}>{character.name}</Text>
+        )}
+        <BloomBubble fillColor={fillColor}>{block.content}</BloomBubble>
+      </View>
+    );
+  }
+
   // Other bubble types (speech, thinking)
   const getBubbleStyle = () => {
     let baseStyle: any = {

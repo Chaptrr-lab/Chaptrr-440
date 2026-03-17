@@ -56,14 +56,29 @@ function RootLayoutNav() {
             presentation: "card"
           }} 
         />
-        <Stack.Screen 
-          name="onair" 
-          options={{ 
+        <Stack.Screen
+          name="onair"
+          options={{
             headerShown: false,
             presentation: "card"
-          }} 
+          }}
+        />
+        <Stack.Screen
+          name="studio"
+          options={{
+            headerShown: false,
+            presentation: "card"
+          }}
+        />
+        <Stack.Screen
+          name="author"
+          options={{
+            headerShown: false,
+            presentation: "card"
+          }}
         />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack>
     </View>
   );
