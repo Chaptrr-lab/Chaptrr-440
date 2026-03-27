@@ -23,7 +23,8 @@ import { useAppStore } from '@/store/app-store';
 import { mockProjects, generateFeedPosts } from '@/data/mock-data';
 import { FeedPost } from '@/types';
 import { useTheme } from '@/theme/ThemeProvider';
-
+import { getProject, updateProject } from '@/lib/database';
+},{
 interface FollowerWhoEngaged {
   id: string;
   name: string;
@@ -183,7 +184,6 @@ export default function ExploreScreen() {
       setStoreFeedPosts(posts);
       setFeedPosts(posts);
       
-      const { getProject, updateProject } = await import('@/lib/database');
       const bookmarked = new Set<string>();
       const subscribed = new Set<string>();
       
