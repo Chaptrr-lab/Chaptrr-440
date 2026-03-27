@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import SafeImage from '@/ui/SafeImage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BookOpen, Search, Menu, X, ChevronLeft, ChevronRight, User, Coins, Globe, Type, Eye, Headphones, BookText, LayoutGrid, Moon, Sun, BookMarked, Bookmark } from 'lucide-react-native';
+import { BookOpen, Search, Menu, X, ChevronLeft, ChevronRight, User, Coins, Globe, Type, Eye, Headphones, BookText, LayoutGrid, Moon, Sun, Bookmark } from 'lucide-react-native';
 import AppLogo from '@/assets/AppLogo';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,7 +24,7 @@ import { mockProjects, generateFeedPosts } from '@/data/mock-data';
 import { FeedPost } from '@/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { getProject, updateProject } from '@/lib/database';
-},{
+
 interface FollowerWhoEngaged {
   id: string;
   name: string;
@@ -55,7 +55,7 @@ function getHookSignal(score: number, isNew: boolean): { label: string; emoji: s
   return { emoji: '✨', label: 'Rising story' };
 }
 
-const FeedCard = memo(function FeedCard({ post, onLike, onSubscribe, onBookmark, onOpen, onCardPress, isLiked, isSubscribed, isBookmarked }: Omit<FeedCardProps, 'followersWhoEngaged'>) {
+const FeedCard = memo(function FeedCard({ post, onLike, onSubscribe: _onSubscribe, onBookmark, onOpen, onCardPress, isLiked, isSubscribed: _isSubscribed, isBookmarked }: Omit<FeedCardProps, 'followersWhoEngaged'>) {
   const { project } = post;
   const { height: screenHeight } = useWindowDimensions();
   const cardHeight = screenHeight * 0.72;
@@ -209,7 +209,7 @@ export default function ExploreScreen() {
       console.log('[ExploreScreen] Initial data loaded. Bookmarked:', Array.from(bookmarked), 'Subscribed:', Array.from(subscribed));
     };
     
-    loadInitialData();
+    void loadInitialData();
   }, [setProjects, setStoreFeedPosts]);
 
   const onRefresh = async () => {
@@ -232,7 +232,7 @@ export default function ExploreScreen() {
   const { height: screenHeight } = useWindowDimensions();
   const itemHeight = screenHeight * 0.7 + 24;
 
-  const getFollowersWhoEngaged = (projectId: string): FollowerWhoEngaged[] => {
+  const _getFollowersWhoEngaged = (_projectId: string): FollowerWhoEngaged[] => {
     const mockFollowers: FollowerWhoEngaged[] = [
       { id: 'f1', name: 'John', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face', engagementType: 'liked' },
       { id: 'f2', name: 'Emma', avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face', engagementType: 'subscribed' },
@@ -302,7 +302,6 @@ export default function ExploreScreen() {
         return newSet;
       });
       
-      const { updateProject } = await import('@/lib/database');
       await updateProject(projectId, { subscribed: willSubscribe });
       
       const message = willSubscribe ? 'Subscribed to updates' : 'Unsubscribed';
@@ -357,7 +356,6 @@ export default function ExploreScreen() {
         return next;
       });
       
-      const { updateProject } = await import('@/lib/database');
       await updateProject(projectId, { bookmarked: willBookmark });
       
       const message = willBookmark ? 'Added to Bookmarks' : 'Removed from Bookmarks';

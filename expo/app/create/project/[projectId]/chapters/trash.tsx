@@ -11,7 +11,7 @@ import {
 import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { listChapters } from '@/lib/database';
+import { listChapters, updateChapter } from '@/lib/database';
 import { useTheme } from '@/theme/ThemeProvider';
 
 export default function ChaptersTrashBinScreen() {
@@ -20,39 +20,29 @@ export default function ChaptersTrashBinScreen() {
   const insets = useSafeAreaInsets();
   const { activeTheme } = useTheme();
 
-  const loadTrashedChapters = async () => {
+  const loadTrashedChapters = useCallback(async () => {
     if (!projectId) return;
-    
+
     try {
-      const { Platform } = await import('react-native');
-      
-      if (Platform.OS === 'web') {
-        const { listChaptersByProject } = await import('@/lib/persist');
-        const allChapters = await listChaptersByProject(projectId);
-        const trashed = allChapters.filter((c: any) => c.status === 'TRASHED');
-        setTrashedChapters(trashed);
-      } else {
-        const allChapters = await listChapters(projectId, { includeDrafts: true });
-        const trashed = allChapters.filter((c: any) => c.status === 'trashed' || (c as any).status === 'TRASHED');
-        setTrashedChapters(trashed);
-      }
+      const allChapters = await listChapters(projectId, { includeDrafts: true });
+      const trashed = allChapters.filter((chapter: any) => chapter.status === 'trashed' || chapter.status === 'TRASHED');
+      setTrashedChapters(trashed);
       console.log('Trashed chapters loaded');
     } catch (error) {
       console.error('Error loading trashed chapters:', error);
       setTrashedChapters([]);
     }
-  };
+  }, [projectId]);
 
   useFocusEffect(
     useCallback(() => {
-      loadTrashedChapters();
-    }, [projectId])
+      void loadTrashedChapters();
+    }, [loadTrashedChapters])
   );
 
   const handleRestore = async (chapterId: string) => {
     try {
-      const { updateChapter } = await import('@/lib/database');
-      await updateChapter(chapterId, { status: 'draft' as any });
+      await updateChapter(chapterId, { status: 'DRAFT' as any });
       await loadTrashedChapters();
       Alert.alert('Success', 'Chapter restored');
     } catch (error) {
@@ -77,9 +67,8 @@ export default function ChaptersTrashBinScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { updateChapter } = await import('@/lib/database');
               for (const chapter of trashedChapters) {
-                await updateChapter(chapter.id, { status: 'DELETED' as any });
+                await updateChapter(chapter.id, { status: 'DRAFT' as any });
               }
               setTrashedChapters([]);
               Alert.alert('Success', 'All chapters permanently deleted');
