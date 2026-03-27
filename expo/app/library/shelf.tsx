@@ -11,9 +11,10 @@ import { Stack, router } from 'expo-router';
 import { useAppStore } from '@/store/app-store';
 import { useTheme } from '@/theme/ThemeProvider';
 import { goBackOrFallback } from '@/lib/navigation';
+import { getProject } from '@/lib/database';
 import SafeImage from '@/ui/SafeImage';
 import { ArrowLeft, Clock, BookMarked, Heart, Bookmark } from 'lucide-react-native';
-
+},{
 type TabType = 'subscribed' | 'bookmark' | 'faved';
 
 interface ShelfItem {
@@ -35,7 +36,6 @@ export default function ShelfScreen() {
 
   const loadItems = React.useCallback(async () => {
     try {
-      const { getProject } = await import('@/lib/database');
       const filteredProjects: ShelfItem[] = [];
       
       for (const project of projects) {
