@@ -15,7 +15,7 @@ import {
 import { ArrowLeft, Plus, Edit3, Users, MoreVertical, Eye, Radio, Upload, Trash2, Image as ImageIcon } from 'lucide-react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { listChapters, createChapter, updateChapterBlocks, getProject, updateProject, addChapterToBroadcastQueue } from '@/lib/database';
+import { listChapters, createChapter, updateChapter, updateChapterBlocks, getProject, updateProject, addChapterToBroadcastQueue } from '@/lib/database';
 import { Chapter, Block, Project } from '@/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import * as DocumentPicker from 'expo-document-picker';
@@ -212,7 +212,7 @@ export default function ChaptersListScreen() {
           }
         }
       };
-      loadData();
+      void loadData();
     }, [projectId])
   );
 
@@ -492,7 +492,6 @@ export default function ChaptersListScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { updateChapter } = await import('@/lib/database');
               await updateChapter(chapterId, { status: 'TRASHED' as any });
               const updatedChapters = await listChapters(projectId, { includeDrafts: true });
               const filteredChapters = updatedChapters.filter(c => c.status !== 'trashed' as any);
