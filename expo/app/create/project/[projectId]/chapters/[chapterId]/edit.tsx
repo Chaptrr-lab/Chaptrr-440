@@ -15,9 +15,8 @@ import {
   Image,
 } from 'react-native';
 import SafeImage from '@/ui/SafeImage';
-import { ArrowLeft, Trash2, Image as ImageIcon, Type, MessageCircle, Cloud, Settings, AlignLeft, AlignCenter, AlignRight, Upload, Camera, X, FileText, Plus, Eye } from 'lucide-react-native';
+import { ArrowLeft, Trash2, Image as ImageIcon, Type, MessageCircle, Cloud, Settings, AlignLeft, AlignCenter, AlignRight, Upload, Camera, X, Plus, Eye } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
-import Slider from '@react-native-community/slider';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getChapter, updateChapter, listCharacters, updateChapterBlocks, addChapterToBroadcastQueue, createChapter as dbCreateChapter, listCustomBubbles, createCustomBubble } from '@/lib/database';
@@ -151,7 +150,7 @@ interface BlockSettingsSheetProps {
   onOpenCustomBubbleEditor: () => void;
 }
 
-function BlockSettingsSheet({ visible, onClose, activeBlockId, getBlockById, updateBlock, blocks, characters, onDelete, projectId, onOpenCustomBubbleEditor }: BlockSettingsSheetProps) {
+function BlockSettingsSheet({ visible, onClose, activeBlockId, getBlockById, updateBlock, blocks, characters, onDelete, projectId: _projectId, onOpenCustomBubbleEditor }: BlockSettingsSheetProps) {
   const { activeTheme } = useTheme();
   const [imageUrl, setImageUrl] = useState('');
   
@@ -467,7 +466,9 @@ function BlockSettingsSheet({ visible, onClose, activeBlockId, getBlockById, upd
                                 if (Platform.OS === 'web' && asset.base64) {
                                   imageUri = `data:image/jpeg;base64,${asset.base64}`;
                                 }
-                                activeBlockId && updateBlock(activeBlockId, { bgStyle: { ...block.bgStyle, mode: currentMode, imageUrl: imageUri, transition: block.bgStyle?.transition || 'fade' } });
+                                if (activeBlockId) {
+                                  updateBlock(activeBlockId, { bgStyle: { ...block.bgStyle, mode: currentMode, imageUrl: imageUri, transition: block.bgStyle?.transition || 'fade' } });
+                                }
                               }
                             } catch (error) {
                               console.error('Error picking image:', error);
@@ -513,7 +514,9 @@ function BlockSettingsSheet({ visible, onClose, activeBlockId, getBlockById, upd
                                 if (Platform.OS === 'web' && asset.base64) {
                                   imageUri = `data:image/jpeg;base64,${asset.base64}`;
                                 }
-                                activeBlockId && updateBlock(activeBlockId, { bgStyle: { ...block.bgStyle, mode: currentMode, imageUrl: imageUri, transition: block.bgStyle?.transition || 'fade' } });
+                                if (activeBlockId) {
+                                  updateBlock(activeBlockId, { bgStyle: { ...block.bgStyle, mode: currentMode, imageUrl: imageUri, transition: block.bgStyle?.transition || 'fade' } });
+                                }
                               }
                             } catch (error) {
                               console.error('Error picking image:', error);
@@ -546,7 +549,9 @@ function BlockSettingsSheet({ visible, onClose, activeBlockId, getBlockById, upd
                                   if (Platform.OS === 'web' && asset.base64) {
                                     imageUri = `data:image/jpeg;base64,${asset.base64}`;
                                   }
-                                  activeBlockId && updateBlock(activeBlockId, { bgStyle: { ...block.bgStyle, mode: currentMode, imageUrl: imageUri, transition: block.bgStyle?.transition || 'fade' } });
+                                  if (activeBlockId) {
+                                  updateBlock(activeBlockId, { bgStyle: { ...block.bgStyle, mode: currentMode, imageUrl: imageUri, transition: block.bgStyle?.transition || 'fade' } });
+                                }
                                 }
                               } catch (error) {
                                 console.error('Error taking photo:', error);
@@ -798,7 +803,7 @@ interface BlockEditorProps {
   onOpenBubblePicker: (blockId: string) => void;
 }
 
-function BlockEditor({ block, index, characters, blocks, onUpdate, onDelete, onMoveUp, onMoveDown, onOpenSettings, isActive, onFocus, globalSpacing, onOpenBubblePicker }: BlockEditorProps) {
+function BlockEditor({ block, index, characters, blocks: _blocks, onUpdate, onDelete, onMoveUp, onMoveDown, onOpenSettings, isActive, onFocus, globalSpacing, onOpenBubblePicker }: BlockEditorProps) {
   const { activeTheme } = useTheme();
   
   console.log('[render]', block.id, block.spacing);
@@ -1180,7 +1185,7 @@ export default function ChapterEditScreen() {
   const [spacingMenuVisible, setSpacingMenuVisible] = useState(false);
   const [globalSpacing, setGlobalSpacing] = useState(0);
   const [bubbleTypePickerVisible, setBubbleTypePickerVisible] = useState(false);
-  const [customBubbleEditorVisible, setCustomBubbleEditorVisible] = useState(false);
+  const [_customBubbleEditorVisible, setCustomBubbleEditorVisible] = useState(false);
   const [customBubbles, setCustomBubbles] = useState<CustomBubble[]>([]);
   
   // Custom bubble editor state
@@ -1232,7 +1237,7 @@ export default function ChapterEditScreen() {
       }
     };
     
-    loadData();
+    void loadData();
   }, [chapterId, projectId]);
 
   const showToast = (message: string) => {
@@ -1244,7 +1249,7 @@ export default function ChapterEditScreen() {
     }
   };
 
-  const validateImageContent = async (content: string): Promise<boolean> => {
+  const _validateImageContent = async (content: string): Promise<boolean> => {
     if (!content?.trim()) return false;
     
     // For base64 data URIs (web)
@@ -1308,21 +1313,23 @@ export default function ChapterEditScreen() {
         try {
           if (block.content === null || block.content === undefined) {
             sanitizedContent = '';
-          } else if (typeof block.content === 'string') {
-            // Only remove null bytes and other problematic control characters
-            // Keep newlines (\n, \r) for text blocks
-            sanitizedContent = block.content
-              .replace(/\x00/g, '') // Remove null bytes
-              .replace(/[\x01-\x08\x0B-\x0C\x0E-\x1F]/g, ''); // Remove other control chars except \n (\x0A) and \r (\x0D)
-            
-            // For non-text blocks, also remove newlines and trim
+          } else {
+            const rawContent = typeof block.content === 'string' ? block.content : String(block.content);
+            sanitizedContent = rawContent
+              .split('')
+              .filter((character) => {
+                const code = character.charCodeAt(0);
+                if (block.type === 'text') {
+                  return code >= 32 || code === 10 || code === 13;
+                }
+
+                return code >= 32;
+              })
+              .join('');
+
             if (block.type !== 'text') {
               sanitizedContent = sanitizedContent.replace(/[\r\n]+/g, '').trim();
             }
-          } else {
-            sanitizedContent = String(block.content)
-              .replace(/\x00/g, '')
-              .replace(/[\x01-\x08\x0B-\x0C\x0E-\x1F]/g, '');
           }
         } catch (e) {
           console.error('[saveDraft] Error sanitizing content:', e);
@@ -1392,7 +1399,6 @@ export default function ChapterEditScreen() {
       await updateChapterBlocks(savedChapterId, validatedBlocks);
       
       // Verify blocks were saved by reloading
-      const { getChapter } = await import('@/lib/database');
       const reloadedChapter = await getChapter(savedChapterId);
       console.log('[saveDraft] Verified saved blocks:', reloadedChapter?.blocks.length);
       
@@ -1428,7 +1434,7 @@ export default function ChapterEditScreen() {
     // Auto-save every 15 seconds
     const timer = setTimeout(() => {
       if (title.trim() || blocks.length > 0 || afterNote.trim()) {
-        handleSaveDraft();
+        void handleSaveDraft();
       }
     }, 15000);
     
@@ -1437,7 +1443,7 @@ export default function ChapterEditScreen() {
     return () => {
       clearTimeout(timer);
     };
-  }, [title, blocks.length, afterNote, globalSpacing]);
+  }, [title, blocks.length, afterNote, globalSpacing, autoSaveTimer, handleSaveDraft]);
 
   const handleToBroadcast = async () => {
     if (!projectId) {
@@ -1582,7 +1588,7 @@ export default function ChapterEditScreen() {
   // Convert novel prose text to Block[] for saving
   const novelTextToBlocks = (text: string): Block[] => {
     const segs: Block[] = [];
-    const parts = text.split(/(\"[^\"]+\")/g);
+    const parts = text.split(/("[^"]+")/g);
     let order = 0;
     for (const part of parts) {
       if (!part.trim()) continue;
@@ -1664,7 +1670,7 @@ export default function ChapterEditScreen() {
     setBlocks(updated.map((block, i) => ({ ...block, order: i })));
   };
 
-  const handleUploadFile = async () => {
+  const _handleUploadFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
@@ -1727,7 +1733,7 @@ export default function ChapterEditScreen() {
         [
           { text: 'Discard', style: 'destructive', onPress: () => router.back() },
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Save Draft & Exit', onPress: () => { handleSaveDraft(); router.back(); } }
+          { text: 'Save Draft & Exit', onPress: () => { void handleSaveDraft(); router.back(); } }
         ]
       );
     } else {
@@ -1735,7 +1741,7 @@ export default function ChapterEditScreen() {
     }
   };
 
-  const handleSaveCustomBubble = async () => {
+  const _handleSaveCustomBubble = async () => {
     if (!bubbleName.trim()) {
       Alert.alert('Validation Error', 'Please enter a bubble name');
       return;
@@ -1776,7 +1782,7 @@ export default function ChapterEditScreen() {
     }
   };
   
-  const handlePickBubbleImage = async () => {
+  const _handlePickBubbleImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {

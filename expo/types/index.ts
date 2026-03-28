@@ -44,7 +44,7 @@ export interface Block {
   spacing?: number; // 0-10 for vertical spacing between blocks in reader
   // Text block specific properties
   textStyle?: {
-    bubbleType?: 'plain' | 'dialogue' | 'thinking' | 'shout' | 'custom';
+    bubbleType?: 'plain' | 'dialogue' | 'thinking' | 'shout' | 'loud' | 'loud-convex' | 'machine' | 'bloom' | 'custom';
     customBubbleId?: string; // references CustomBubble.id when bubbleType is 'custom'
     characterId?: string; // references Character.id for dialogue bubbles
     alignment?: 'left' | 'center' | 'right';

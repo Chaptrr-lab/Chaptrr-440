@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
-import * as SQLite from 'expo-sqlite';
+import * as SQLite from './sqlite';
 import AsyncStorage from './async-storage';
-import { Character, Chapter, Project, Block, RichBlock, CustomBubble } from '@/types';
+import { Character, Chapter, Project, Block, CustomBubble } from '@/types';
 
 // Storage keys for web
 const STORAGE_KEYS = {
@@ -92,10 +92,21 @@ const setWebData = async <T>(key: string, data: T[]): Promise<void> => {
           // For text content in blocks, preserve newlines but remove other control chars
           if (key === STORAGE_KEYS.BLOCKS && k === 'text') {
             sanitized[k] = value
-              .replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, ''); // Remove control chars except \n (\x0A) and \r (\x0D)
+              .split('')
+              .filter((character) => {
+                const code = character.charCodeAt(0);
+                return (code >= 32 && code !== 127) || code === 10 || code === 13;
+              })
+              .join('');
           } else {
             // For all other strings, remove ALL control characters
-            sanitized[k] = value.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+            sanitized[k] = value
+              .split('')
+              .filter((character) => {
+                const code = character.charCodeAt(0);
+                return code >= 32 && code !== 127;
+              })
+              .join('');
           }
         } else {
           sanitized[k] = value;
@@ -116,7 +127,7 @@ const setWebData = async <T>(key: string, data: T[]): Promise<void> => {
     console.error(`Error message: ${errorMsg}`);
     try {
       console.error(`Data that failed (first 500 chars):`, JSON.stringify(data, null, 2).substring(0, 500));
-    } catch (e) {
+    } catch {
       console.error(`Could not stringify data for logging`);
     }
     throw new Error(`Failed to save data: ${errorMsg}`);
@@ -163,7 +174,7 @@ export const initializeDatabase = async (): Promise<void> => {
     
     try {
       db.execSync(`ALTER TABLE projects ADD COLUMN broadcast TEXT;`);
-    } catch (e) {
+    } catch {
       // Column already exists, ignore
     }
 
@@ -201,7 +212,7 @@ export const initializeDatabase = async (): Promise<void> => {
     // Add chapter_order column if it doesn't exist (for existing databases)
     try {
       db.execSync(`ALTER TABLE chapters ADD COLUMN chapter_order INTEGER NOT NULL DEFAULT 0;`);
-    } catch (e) {
+    } catch {
       // Column already exists, ignore
     }
 
@@ -228,42 +239,42 @@ export const initializeDatabase = async (): Promise<void> => {
     // Add new columns if they don't exist (for existing databases)
     try {
       db.execSync(`ALTER TABLE blocks ADD COLUMN image_style TEXT;`);
-    } catch (e) {
+    } catch {
       // Column already exists, ignore
     }
     try {
       db.execSync(`ALTER TABLE blocks ADD COLUMN background_style TEXT;`);
-    } catch (e) {
+    } catch {
       // Column already exists, ignore
     }
     try {
       db.execSync(`ALTER TABLE chapters ADD COLUMN spacing INTEGER DEFAULT 2;`);
-    } catch (e) {
+    } catch {
       // Column already exists, ignore
     }
     try {
       db.execSync(`ALTER TABLE chapters ADD COLUMN after_note TEXT;`);
-    } catch (e) {
+    } catch {
       // Column already exists, ignore
     }
     try {
       db.execSync(`ALTER TABLE chapters ADD COLUMN global_spacing INTEGER DEFAULT 0;`);
-    } catch (e) {
+    } catch {
       // Column already exists, ignore
     }
     try {
       db.execSync(`ALTER TABLE projects ADD COLUMN bookmarked INTEGER DEFAULT 0;`);
-    } catch (e) {
+    } catch {
       // Column already exists, ignore
     }
     try {
       db.execSync(`ALTER TABLE projects ADD COLUMN subscribed INTEGER DEFAULT 0;`);
-    } catch (e) {
+    } catch {
       // Column already exists, ignore
     }
     try {
       db.execSync(`ALTER TABLE projects ADD COLUMN status TEXT;`);
-    } catch (e) {
+    } catch {
       // Column already exists, ignore
     }
 
@@ -851,19 +862,33 @@ export const updateChapterBlocks = async (chapterId: string, blocks: Block[]): P
             // For text blocks, preserve newlines but remove other control chars
             if (block.type === 'text') {
               sanitizedContent = block.content
-                .replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '') // Remove control chars except \n (\x0A) and \r (\x0D)
-                .replace(/[\u0000-\u0009\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, ''); // Remove unicode control chars except newlines
+                .split('')
+                .filter((character) => {
+                  const code = character.charCodeAt(0);
+                  return (code >= 32 && code !== 127) || code === 10 || code === 13;
+                })
+                .join('');
             } else {
               // For image/BG blocks, remove ALL control characters including newlines
               sanitizedContent = block.content
-                .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove all control chars
-                .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove unicode control chars
+                .split('')
+                .filter((character) => {
+                  const code = character.charCodeAt(0);
+                  return code >= 32 && code !== 127;
+                })
+                .join('')
                 .trim();
             }
           } else if (typeof block.content === 'object') {
             sanitizedContent = JSON.stringify(block.content);
           } else {
-            sanitizedContent = String(block.content).replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+            sanitizedContent = String(block.content)
+              .split('')
+              .filter((character) => {
+                const code = character.charCodeAt(0);
+                return code >= 32 && code !== 127;
+              })
+              .join('');
           }
           
           if (block.type !== 'text') {
@@ -940,15 +965,23 @@ export const updateChapterBlocks = async (chapterId: string, blocks: Block[]): P
         // Remove problematic control characters but preserve newlines for text blocks
         if (typeof content === 'string') {
           textContent = content
-            .replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '') // Remove control chars except \n (\x0A) and \r (\x0D)
-            .replace(/[\u0000-\u0009\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '') // Remove unicode control chars except newlines
-            .replace(/\\x[0-9A-Fa-f]{2}/g, '') // Remove hex escape sequences
-            .replace(/\\u[0-9A-Fa-f]{4}/g, ''); // Remove unicode escape sequences
+            .split('')
+            .filter((character) => {
+              const code = character.charCodeAt(0);
+              return (code >= 32 && code !== 127) || code === 10 || code === 13;
+            })
+            .join('')
+            .replace(/\\x[0-9A-Fa-f]{2}/g, '')
+            .replace(/\\u[0-9A-Fa-f]{4}/g, '');
           // Note: expo-sqlite handles quote escaping automatically with parameterized queries
         } else {
           textContent = String(content)
-            .replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
-            .replace(/[\u0000-\u0009\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+            .split('')
+            .filter((character) => {
+              const code = character.charCodeAt(0);
+              return (code >= 32 && code !== 127) || code === 10 || code === 13;
+            })
+            .join('');
         }
       }
       // Sanitize content URL for images and BG blocks
@@ -957,8 +990,12 @@ export const updateChapterBlocks = async (chapterId: string, blocks: Block[]): P
         const rawContent = block.content || '';
         if (typeof rawContent === 'string' && rawContent.trim() !== '') {
           contentUrl = rawContent
-            .replace(/[\x00-\x1F\x7F-\x9F]/g, '')
-            .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+            .split('')
+            .filter((character) => {
+              const code = character.charCodeAt(0);
+              return code >= 32 && code !== 127;
+            })
+            .join('')
             .trim();
         }
       }
@@ -1032,7 +1069,7 @@ export const listBlocks = async (chapterId: string): Promise<Block[]> => {
               sizeMode: imageStyle.sizeMode || 'default',
               roundedCorners: imageStyle.roundedCorners || false
             };
-          } catch (e) {
+          } catch {
             // Fallback to default image style
             block.imageStyle = {
               alignment: 'center',
@@ -1051,7 +1088,7 @@ export const listBlocks = async (chapterId: string): Promise<Block[]> => {
               imageUrl: bgStyle.imageUrl || '',
               transition: bgStyle.transition || 'fade'
             };
-          } catch (e) {
+          } catch {
             // Fallback to default BG style
             block.bgStyle = {
               mode: 'OPEN' as const,
@@ -1101,7 +1138,7 @@ export const listBlocks = async (chapterId: string): Promise<Block[]> => {
             sizeMode: imageStyle.sizeMode || 'default',
             roundedCorners: imageStyle.roundedCorners || false
           };
-        } catch (e) {
+        } catch {
           // Fallback to default image style
           block.imageStyle = {
             alignment: 'center',
@@ -1120,7 +1157,7 @@ export const listBlocks = async (chapterId: string): Promise<Block[]> => {
             imageUrl: bgStyle.imageUrl || '',
             transition: bgStyle.transition || 'fade'
           };
-        } catch (e) {
+        } catch {
           // Fallback to default BG style
           block.bgStyle = {
             mode: 'OPEN' as const,
@@ -1442,7 +1479,7 @@ export const updateProject = async (id: string, patch: Partial<{ title: string; 
           try {
             const parsed = JSON.parse(tagsValue);
             tagsValue = Array.isArray(parsed) ? parsed : [];
-          } catch (e) {
+          } catch {
             console.warn('[updateProject] Failed to parse tags, using empty array');
             tagsValue = [];
           }
@@ -1454,7 +1491,7 @@ export const updateProject = async (id: string, patch: Partial<{ title: string; 
           try {
             const parsed = JSON.parse(longDescValue);
             longDescValue = Array.isArray(parsed) ? parsed : [];
-          } catch (e) {
+          } catch {
             console.warn('[updateProject] Failed to parse longDescription, using empty array');
             longDescValue = [];
           }
@@ -1489,7 +1526,7 @@ export const updateProject = async (id: string, patch: Partial<{ title: string; 
           try {
             const parsed = JSON.parse(longDescValue);
             longDescValue = Array.isArray(parsed) ? parsed : [];
-          } catch (e) {
+          } catch {
             console.warn('[updateProject] Failed to parse longDescription, using empty array');
             longDescValue = [];
           }
@@ -1503,7 +1540,7 @@ export const updateProject = async (id: string, patch: Partial<{ title: string; 
           try {
             const parsed = JSON.parse(tagsValue);
             tagsValue = Array.isArray(parsed) ? parsed : [];
-          } catch (e) {
+          } catch {
             console.warn('[updateProject] Failed to parse tags, using empty array');
             tagsValue = [];
           }
