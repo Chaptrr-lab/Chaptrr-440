@@ -12,6 +12,7 @@ import {
   Platform,
   Modal,
   Pressable,
+  Image,
 } from 'react-native';
 import SafeImage from '@/ui/SafeImage';
 import { ArrowLeft, Trash2, Image as ImageIcon, Type, MessageCircle, Cloud, Settings, AlignLeft, AlignCenter, AlignRight, Upload, Camera, X, FileText, Plus, Eye } from 'lucide-react-native';
@@ -1263,16 +1264,15 @@ export default function ChapterEditScreen() {
           if (!content.trim()) return false;
           const response = await fetch(content, { method: 'HEAD' });
           return response.ok && (response.headers.get('content-type')?.startsWith('image/') || false);
-        } else {
-          const { Image } = await import('react-native');
-          return new Promise((resolve) => {
-            Image.getSize(
-              content,
-              () => resolve(true),
-              () => resolve(false)
-            );
-          });
         }
+
+        return new Promise((resolve) => {
+          Image.getSize(
+            content,
+            () => resolve(true),
+            () => resolve(false)
+          );
+        });
       } catch {
         return false;
       }
