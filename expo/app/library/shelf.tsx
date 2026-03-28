@@ -14,7 +14,7 @@ import { goBackOrFallback } from '@/lib/navigation';
 import { getProject } from '@/lib/database';
 import SafeImage from '@/ui/SafeImage';
 import { ArrowLeft, Clock, BookMarked, Heart, Bookmark } from 'lucide-react-native';
-},{
+
 type TabType = 'subscribed' | 'bookmark' | 'faved';
 
 interface ShelfItem {

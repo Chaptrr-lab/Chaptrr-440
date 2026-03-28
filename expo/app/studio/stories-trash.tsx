@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
+  Platform,
 } from 'react-native';
 import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listProjects, updateProject } from '@/lib/database';
+import AsyncStorage from '@/lib/async-storage';
 import { useTheme } from '@/theme/ThemeProvider';
 import { goBackOrFallback } from '@/lib/navigation';
 
@@ -22,10 +24,7 @@ export default function StoriesTrashBinScreen() {
 
   const loadTrashedStories = useCallback(async () => {
     try {
-      const { Platform } = await import('react-native');
-      
       if (Platform.OS === 'web') {
-        const AsyncStorage = (await import('@/lib/async-storage')).default;
         const data = await AsyncStorage.getItem('chaptrr_projects');
         if (!data) {
           setTrashedStories([]);
