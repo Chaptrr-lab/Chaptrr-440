@@ -20,6 +20,7 @@ import { Chapter, Block, Project } from '@/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import { goBackOrFallback } from '@/lib/navigation';
 
 interface ChapterCardProps {
   chapter: Chapter;
@@ -221,7 +222,7 @@ export default function ChaptersListScreen() {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: activeTheme.colors.background }]}>
         <View style={styles.errorContainer}>
           <Text style={[styles.errorText, { color: activeTheme.colors.text.primary }]}>Project ID not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/(tabs)/studio')}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -519,7 +520,10 @@ export default function ChaptersListScreen() {
       <StatusBar barStyle={activeTheme.colors.background === '#000000' ? 'light-content' : 'dark-content'} backgroundColor={activeTheme.colors.background} />
       
       <View style={[styles.header, { borderBottomColor: activeTheme.colors.border }]}>
-        <TouchableOpacity style={styles.backIcon} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backIcon}
+          onPress={() => goBackOrFallback(router, projectId ? `/studio/${projectId}` as any : '/(tabs)/studio')}
+        >
           <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: activeTheme.colors.text.primary }]} numberOfLines={1}>{project?.title || 'Story'}</Text>

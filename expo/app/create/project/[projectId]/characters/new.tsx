@@ -12,6 +12,7 @@ import { ArrowLeft, Save } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createCharacter } from '@/lib/database';
+import { goBackOrFallback } from '@/lib/navigation';
 
 export default function CharacterCreateScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -44,7 +45,7 @@ export default function CharacterCreateScreen() {
       });
       
       console.log('Character saved:', result.id);
-      router.back();
+      goBackOrFallback(router, `/create/project/${projectId}/characters` as any);
     } catch (error) {
       console.error('Error creating character:', error);
     }
@@ -55,7 +56,7 @@ export default function CharacterCreateScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backIcon} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backIcon} onPress={() => goBackOrFallback(router, projectId ? `/create/project/${projectId}/characters` as any : '/(tabs)/studio')}>
           <ArrowLeft size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>New Character</Text>

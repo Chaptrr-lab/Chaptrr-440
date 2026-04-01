@@ -13,6 +13,7 @@ import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listChapters, updateChapter } from '@/lib/database';
 import { useTheme } from '@/theme/ThemeProvider';
+import { goBackOrFallback } from '@/lib/navigation';
 
 export default function ChaptersTrashBinScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -91,7 +92,7 @@ export default function ChaptersTrashBinScreen() {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: activeTheme.colors.background }]}>
         <View style={styles.errorContainer}>
           <Text style={[styles.errorText, { color: activeTheme.colors.text.primary }]}>Project ID not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/(tabs)/studio')}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -104,7 +105,7 @@ export default function ChaptersTrashBinScreen() {
       <StatusBar barStyle={activeTheme.colors.background === '#000000' ? 'light-content' : 'dark-content'} backgroundColor={activeTheme.colors.background} />
       
       <View style={[styles.header, { borderBottomColor: activeTheme.colors.border }]}>
-        <TouchableOpacity style={styles.backIcon} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backIcon} onPress={() => goBackOrFallback(router, `/create/project/${projectId}/chapters` as any)}>
           <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: activeTheme.colors.text.primary }]}>Chapters Trash Bin</Text>

@@ -15,6 +15,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listChaptersByProject } from '@/lib/persist';
 import { addChapterToBroadcastQueue } from '@/lib/database';
+import { goBackOrFallback } from '@/lib/navigation';
 import { Chapter } from '@/types';
 
 interface DraftCardProps {
@@ -153,7 +154,7 @@ export default function DraftsScreen() {
       }
     };
     
-    loadDrafts();
+    void loadDrafts();
   }, [projectId]);
 
   if (!projectId) {
@@ -161,7 +162,7 @@ export default function DraftsScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Project ID not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/(tabs)/studio')}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -212,7 +213,7 @@ export default function DraftsScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backIcon} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backIcon} onPress={() => goBackOrFallback(router, `/create/project/${projectId}/chapters` as any)}>
           <ArrowLeft size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Drafts</Text>

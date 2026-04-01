@@ -10,7 +10,7 @@ import {
   Animated,
   TextInput,
 } from 'react-native';
-import { ArrowLeft, ArrowUp, Heart, Bookmark, Settings, Globe, Type, Eye, Headphones, BookText, MessageCircle, ChevronRight, X } from 'lucide-react-native';
+import { ArrowLeft, ArrowUp, Bookmark, Settings, Globe, Type, Eye, Headphones, BookText, MessageCircle, X } from 'lucide-react-native';
 import { router, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChapterReader } from '@/components/reader/ChapterReader';
@@ -26,15 +26,14 @@ export default function ReaderScreen() {
   const [loading, setLoading] = useState(true);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [commentsVisible, setCommentsVisible] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [comment, setComment] = useState('');
   const headerOpacity = useRef(new Animated.Value(1)).current;
 
   // Chapter end sequence state
   const [hookRating, setHookRating] = useState<'hooked' | 'interesting' | 'not-for-me' | null>(null);
-  const [countdownActive, setCountdownActive] = useState(false);
-  const [countdownValue, setCountdownValue] = useState(5);
+  const [, setCountdownActive] = useState(false);
+  const [, setCountdownValue] = useState(5);
   const countdownProgress = useRef(new Animated.Value(0)).current;
   const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastScrollY = useRef(0);
@@ -88,10 +87,6 @@ export default function ReaderScreen() {
 
   const scrollToTop = () => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-  };
-
-  const handleLike = () => {
-    setIsLiked(!isLiked);
   };
 
   const handleBookmark = () => {
@@ -344,7 +339,7 @@ export default function ReaderScreen() {
               )}
               <TouchableOpacity
                 style={styles.followAuthorBtn}
-                onPress={() => router.back()}
+                onPress={() => goBackOrFallback(router, '/(tabs)/explore')}
               >
                 <Text style={styles.followAuthorBtnText}>
                   {currentChapterIndex >= currentProject.chapters.length - 1 ? '+ Follow Author' : '← Back to Feed'}

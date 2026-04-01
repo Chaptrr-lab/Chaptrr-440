@@ -12,8 +12,9 @@ import {
 import { ArrowLeft, Save, Trash2 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getCharacter, updateCharacter, deleteCharacter, getProject } from '@/lib/database';
+import { updateCharacter, deleteCharacter, getProject } from '@/lib/database';
 import { Character, Project } from '@/types';
+import { goBackOrFallback } from '@/lib/navigation';
 
 export default function CharacterDetailScreen() {
   const { projectId, characterId } = useLocalSearchParams<{ 
@@ -76,7 +77,7 @@ export default function CharacterDetailScreen() {
     };
     
     if (projectId && characterId) {
-      loadData();
+      void loadData();
     }
   }, [projectId, characterId]);
 
@@ -100,7 +101,7 @@ export default function CharacterDetailScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Character not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, projectId ? `/create/project/${projectId}/characters` as any : '/(tabs)/studio')}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -123,7 +124,7 @@ export default function CharacterDetailScreen() {
       });
       
       Alert.alert('Success', 'Character updated successfully', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => goBackOrFallback(router, `/create/project/${projectId}/characters` as any) }
       ]);
     } catch (error) {
       console.error('Error updating character:', error);
@@ -147,7 +148,7 @@ export default function CharacterDetailScreen() {
               setSaving(true);
               await deleteCharacter(characterId as string);
               Alert.alert('Success', 'Character deleted successfully', [
-                { text: 'OK', onPress: () => router.back() }
+                { text: 'OK', onPress: () => goBackOrFallback(router, `/create/project/${projectId}/characters` as any) }
               ]);
             } catch (error) {
               console.error('Error deleting character:', error);
@@ -170,7 +171,7 @@ export default function CharacterDetailScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backIcon} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backIcon} onPress={() => goBackOrFallback(router, `/create/project/${projectId}/characters` as any)}>
           <ArrowLeft size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Character Details</Text>

@@ -8,6 +8,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createChapter } from '@/lib/database';
+import { goBackOrFallback } from '@/lib/navigation';
 
 
 
@@ -18,7 +19,7 @@ export default function NewChapterScreen() {
   useEffect(() => {
     if (!projectId) {
       console.error('No projectId provided');
-      router.back();
+      goBackOrFallback(router, '/(tabs)/studio');
       return;
     }
 
@@ -33,11 +34,11 @@ export default function NewChapterScreen() {
         router.replace(`/create/project/${projectId}/chapters/${result.id}/edit`);
       } catch (error) {
         console.error('Error creating chapter:', error);
-        router.back();
+        goBackOrFallback(router, `/create/project/${projectId}/chapters` as any);
       }
     };
 
-    createAndRedirect();
+    void createAndRedirect();
   }, [projectId]);
 
   return (

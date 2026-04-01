@@ -12,6 +12,7 @@ import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listCharacters } from '@/lib/database';
 import { Character } from '@/types';
+import { goBackOrFallback } from '@/lib/navigation';
 
 interface CharacterCardProps {
   character: Character;
@@ -48,7 +49,7 @@ export default function CharactersListScreen() {
           console.log('Characters refreshed:', updatedCharacters.length);
         }
       };
-      loadCharacters();
+      void loadCharacters();
     }, [projectId])
   );
 
@@ -57,7 +58,7 @@ export default function CharactersListScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Project ID not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/(tabs)/studio')}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -78,7 +79,7 @@ export default function CharactersListScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backIcon} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backIcon} onPress={() => goBackOrFallback(router, `/create/project/${projectId}/chapters` as any)}>
           <ArrowLeft size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Characters</Text>

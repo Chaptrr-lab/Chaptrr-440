@@ -19,6 +19,7 @@ import { useAppStore } from '@/store/app-store';
 import { RichBlock, Chapter as ProjectChapter } from '@/types';
 import { listChaptersByProject, Chapter as StoredChapter } from '@/lib/persist';
 import { getProject, updateProject } from '@/lib/database';
+import { goBackOrFallback } from '@/lib/navigation';
 
 interface RichContentBlockProps {
   block: RichBlock;
@@ -101,7 +102,7 @@ export default function PublicProjectScreen() {
         setLoading(false);
       }
     };
-    loadData();
+    void loadData();
   }, [projectId]);
 
   // Find the project from mock data
@@ -146,7 +147,7 @@ export default function PublicProjectScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Project not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/(tabs)/explore')}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -227,7 +228,7 @@ export default function PublicProjectScreen() {
             style={styles.gradient}
           />
           
-          <TouchableOpacity style={styles.backIcon} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backIcon} onPress={() => goBackOrFallback(router, '/(tabs)/explore')}>
             <ArrowLeft size={24} color="#fff" />
           </TouchableOpacity>
 

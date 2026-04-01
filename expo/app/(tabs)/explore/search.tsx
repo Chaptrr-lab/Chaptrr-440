@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { ArrowLeft, Search, X } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { goBackOrFallback } from '@/lib/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app-store';
 import { Project } from '@/types';
@@ -115,7 +116,7 @@ export default function SearchScreen() {
   };
 
   const handleBack = () => {
-    router.back();
+    goBackOrFallback(router, '/(tabs)/explore');
   };
 
   return (
