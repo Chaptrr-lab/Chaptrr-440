@@ -33,10 +33,15 @@ export function ChapterReader({ chapter, characters, globalSpacing = 0 }: Chapte
   const scrollViewRef = useRef<ScrollView>(null);
   const blockLayoutsRef = useRef<Record<string, number>>({}); // blockId → absolute Y
 
-  // Use liveScenes for readers, scenes for preview
+  // Use liveScenes for readers, scenes for preview; always guarantee an array
   const scenes = useMemo(
-    () => (chapter.live && chapter.liveScenes ? chapter.liveScenes : chapter.scenes),
-    [chapter]
+    () => {
+      const src = (chapter.live && chapter.liveScenes) ? chapter.liveScenes : chapter.scenes;
+      return Array.isArray(src) && src.length > 0
+        ? src
+        : [{ id: 'default', order: 0, blocks: [] as Scene['blocks'] }];
+    },
+    [chapter.id, chapter.live, chapter.liveScenes, chapter.scenes]
   );
 
   const handleScroll = useCallback(

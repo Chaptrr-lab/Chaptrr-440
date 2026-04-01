@@ -23,7 +23,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'nervous': {
       // Small sweat drops
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             {[0, 1, 2].map((i) => (
               <Path
@@ -40,7 +40,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'embarrass': {
       // Two blush ovals
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             <Ellipse cx={10} cy={22} rx={8} ry={5} fill="#f9a8d4" opacity={0.7} />
             <Ellipse cx={26} cy={22} rx={8} ry={5} fill="#f9a8d4" opacity={0.7} />
@@ -51,7 +51,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'daze': {
       // Spiral / stars
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             {[0, 1, 2].map((i) => {
               const angle = (i / 3) * Math.PI * 2;
@@ -73,7 +73,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'fright': {
       // Jagged spike lines radiating outward
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             {[0, 1, 2, 3].map((i) => {
               const angle = (i / 4) * Math.PI * 2 + 0.3;
@@ -90,7 +90,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'sad': {
       // Teardrop
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             <Path d={`M ${c} 8 Q ${c - 8} 20 ${c} 28 Q ${c + 8} 20 ${c} 8`} fill="#93c5fd" opacity={0.8} />
           </Svg>
@@ -100,7 +100,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'shout': {
       // Radiating impact lines
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             {[0, 1, 2, 3, 4, 5].map((i) => {
               const angle = (i / 6) * Math.PI * 2;
@@ -115,7 +115,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'whisper': {
       // Three small dots
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             {[8, 18, 28].map((x) => (
               <Circle key={x} cx={x} cy={c} r={3} fill="#d1d5db" opacity={0.6} />
@@ -127,7 +127,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'love': {
       // Two small hearts
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             {[10, 24].map((cx, i) => (
               <Path
@@ -145,7 +145,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'anger': {
       // Cross/vein mark
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             <Path
               d={`M ${c - 8} ${c} Q ${c - 4} ${c - 8} ${c} ${c} Q ${c + 4} ${c + 8} ${c + 8} ${c}`}
@@ -168,7 +168,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'surprise': {
       // Exclamation mark
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             <SvgText x={c} y={s - 6} fontSize={28} fill={color} textAnchor="middle" fontWeight="bold" opacity={0.9}>!</SvgText>
           </Svg>
@@ -178,7 +178,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'think': {
       // Ellipsis
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             {[6, 16, 26].map((x) => (
               <Circle key={x} cx={x} cy={c + 4} r={4} fill="#9ca3af" opacity={0.7} />
@@ -190,7 +190,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'sarcasm': {
       // Curved air-quote marks
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             <SvgText x={c} y={s - 4} fontSize={22} fill="#a78bfa" textAnchor="middle" opacity={0.85}>"</SvgText>
           </Svg>
@@ -200,7 +200,7 @@ function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: str
     case 'cold': {
       // Snowflake-ish asterisk
       return (
-        <View style={emotionStyles.badge} pointerEvents="none">
+        <View style={[emotionStyles.badge, { pointerEvents: 'none' }]}>
           <Svg width={s} height={s}>
             {[0, 1, 2].map((i) => {
               const angle = (i / 3) * Math.PI;

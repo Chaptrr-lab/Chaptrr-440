@@ -235,9 +235,9 @@ export function BeatEffectsOverlay({ beat, scrollY, blockTopY }: BeatEffectsOver
 
   return (
     <View
-      pointerEvents="none"
       style={[
         styles.overlay,
+        { pointerEvents: 'none' },
         beat.duration === 'linger' ? { marginBottom: 48 } : { marginBottom: 24 },
       ]}
     >

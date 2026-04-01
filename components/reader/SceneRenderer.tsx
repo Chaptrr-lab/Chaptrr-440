@@ -75,10 +75,10 @@ function AtmosphereTint({ scene }: { scene: Scene }) {
 
   return (
     <View
-      pointerEvents="none"
       style={[
         StyleSheet.absoluteFill,
         {
+          pointerEvents: 'none',
           backgroundColor: tint.color,
           opacity: tint.opacity,
         },
@@ -105,54 +105,43 @@ function AnimatedBlock({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(14)).current;
   const hasAnimated = useRef(false);
-  const blockTopY = useRef(0);
+  const blockTopY = useRef(-9999); // -9999 prevents premature beat/entrance triggers
+  // Keep entrance animation type stable across renders
+  const entranceAnimRef = useRef(block.entranceAnimation);
 
   const handleLayout = useCallback(
     (e: any) => {
       const { y } = e.nativeEvent.layout;
-      // We need to measure in the ScrollView's coordinate space.
-      // Using the layout y from parent is sufficient for progress tracking.
       blockTopY.current = y;
       onLayout(block.id, y);
     },
     [block.id, onLayout]
   );
 
-  // Drive entrance animation from scroll position via listener
-  // This uses a simpler approach: trigger on first appearance only
-  const handleScroll = useCallback(() => {
-    if (hasAnimated.current) return;
-    const blockScreenTop = blockTopY.current - scrollY.current;
-    const progress = 1 - (blockScreenTop - TRIGGER_LINE) / (SCREEN_HEIGHT - TRIGGER_LINE);
-    if (progress > 0.1 && !hasAnimated.current) {
-      hasAnimated.current = true;
-      const animation = block.entranceAnimation || 'fade-up';
-      if (animation === 'none') {
-        fadeAnim.setValue(1);
-        slideAnim.setValue(0);
-        return;
-      }
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 350,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 350,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [block.entranceAnimation, block.id, fadeAnim, scrollY, slideAnim]);
-
-  // Attach scroll listener
+  // Entrance animation polling — stable deps (only refs), so interval is created once
   React.useEffect(() => {
-    // Poll for progress on a simple interval (16ms ≈ 60fps)
-    const interval = setInterval(handleScroll, 32);
+    const interval = setInterval(() => {
+      if (hasAnimated.current) return;
+      const blockScreenTop = blockTopY.current - scrollY.current;
+      const progress = 1 - (blockScreenTop - TRIGGER_LINE) / (SCREEN_HEIGHT - TRIGGER_LINE);
+      if (progress > 0.1) {
+        hasAnimated.current = true;
+        clearInterval(interval);
+        const animation = entranceAnimRef.current || 'fade-up';
+        if (animation === 'none') {
+          fadeAnim.setValue(1);
+          slideAnim.setValue(0);
+          return;
+        }
+        Animated.parallel([
+          Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+          Animated.timing(slideAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
+        ]).start();
+      }
+    }, 32);
     return () => clearInterval(interval);
-  }, [handleScroll]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // stable: all deps are refs, created once per block
 
   const spacingPx = 8 + globalSpacing * 20;
   const entranceStyle =

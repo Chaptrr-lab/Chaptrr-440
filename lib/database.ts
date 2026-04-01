@@ -1046,6 +1046,21 @@ export const updateChapterBlocks = async (chapterId: string, blocks: Block[]): P
       });
       
       await setWebData(STORAGE_KEYS.BLOCKS, filtered);
+
+      // Sync blocks into the scenes JSON so getChapter() / listChapters() returns them
+      const allChapters = await getWebData<any>(STORAGE_KEYS.CHAPTERS);
+      const chapterIdx = allChapters.findIndex((c: any) => c.id === chapterId);
+      if (chapterIdx !== -1) {
+        let existingScenes: Scene[] = [];
+        try { existingScenes = allChapters[chapterIdx].scenes ? JSON.parse(allChapters[chapterIdx].scenes) : []; } catch { /* ignore */ }
+        const sortedBlocks = [...blocks].sort((a, b) => a.order - b.order);
+        const updatedScenes: Scene[] = existingScenes.length > 0
+          ? existingScenes.map((s: Scene, idx: number) => idx === 0 ? { ...s, blocks: sortedBlocks } : s)
+          : [{ id: `scene-default-${chapterId}`, order: 0, blocks: sortedBlocks }];
+        allChapters[chapterIdx].scenes = JSON.stringify(updatedScenes);
+        await setWebData(STORAGE_KEYS.CHAPTERS, allChapters);
+      }
+
       console.log('Chapter blocks updated (web):', { chapterId, count: blocks.length });
       return;
     } catch (error) {
@@ -1138,6 +1153,22 @@ export const updateChapterBlocks = async (chapterId: string, blocks: Block[]): P
       );
     }
     
+    // Also persist blocks into the scenes JSON column so getChapter() returns them
+    const sortedBlocks = [...blocks].sort((a, b) => a.order - b.order);
+    const existingRow = db.getFirstSync('SELECT scenes FROM chapters WHERE id = ?', [chapterId]) as any;
+    let existingScenes: Scene[] = [];
+    try {
+      existingScenes = existingRow?.scenes ? JSON.parse(existingRow.scenes) : [];
+    } catch { /* ignore */ }
+    // Keep existing scene metadata (locationHeader, moodTint, etc.) but replace blocks
+    const updatedScenes: Scene[] = existingScenes.length > 0
+      ? existingScenes.map((s, idx) => idx === 0 ? { ...s, blocks: sortedBlocks } : s)
+      : [{ id: `scene-default-${chapterId}`, order: 0, blocks: sortedBlocks }];
+    db.runSync(
+      `UPDATE chapters SET scenes = ?, edited_since_live = 1, updated_at = ? WHERE id = ?`,
+      [JSON.stringify(updatedScenes), new Date().toISOString(), chapterId]
+    );
+
     db.runSync('COMMIT');
     console.log('Chapter blocks updated:', { chapterId, count: blocks.length });
   } catch (error) {
