@@ -12,6 +12,7 @@ import {
   Modal,
   Pressable,
   ImageBackground,
+  ToastAndroid,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { ArrowLeft, Plus, Trash2, Upload, Edit2 } from 'lucide-react-native';
@@ -107,7 +108,6 @@ export default function BubbleEditorScreen() {
       loadBubbles();
       
       if (Platform.OS === 'android') {
-        const { ToastAndroid } = require('react-native');
         ToastAndroid.show(editingBubble ? 'Bubble updated' : 'Bubble created', ToastAndroid.SHORT);
       }
     } catch (error) {
@@ -130,7 +130,6 @@ export default function BubbleEditorScreen() {
               await deleteCustomBubble(bubble.id);
               loadBubbles();
               if (Platform.OS === 'android') {
-                const { ToastAndroid } = require('react-native');
                 ToastAndroid.show('Bubble deleted', ToastAndroid.SHORT);
               }
             } catch (error) {

@@ -31,7 +31,7 @@ export default function BroadcastSettingsScreen() {
         .map((chapterId: string) => project.chapters.find(c => c.id === chapterId))
         .filter(Boolean);
 
-      const allBlocks = queueChapters.flatMap((chapter: any) => chapter!.blocks);
+      const allBlocks = queueChapters.flatMap((chapter: any) => (chapter!.scenes ?? []).flatMap((s: any) => s.blocks ?? []));
       const novelContent = toNovelTxt(allBlocks);
       
       await exportFile(novelContent, `${project.title}-novel.txt`, 'text/plain');
@@ -61,7 +61,7 @@ export default function BroadcastSettingsScreen() {
         .map((chapterId: string) => project.chapters.find(c => c.id === chapterId))
         .filter(Boolean);
 
-      const allBlocks = queueChapters.flatMap((chapter: any) => chapter!.blocks);
+      const allBlocks = queueChapters.flatMap((chapter: any) => (chapter!.scenes ?? []).flatMap((s: any) => s.blocks ?? []));
       const backupContent = toBackupJSONL(allBlocks);
       
       await exportFile(backupContent, `${project.title}-backup.backup`, 'application/json');

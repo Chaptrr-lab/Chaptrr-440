@@ -148,7 +148,7 @@ export default function ChaptersTrashBinScreen() {
                   <View style={styles.chapterInfo}>
                     <Text style={[styles.chapterTitle, { color: activeTheme.colors.text.primary }]}>{chapter.title || 'Untitled Chapter'}</Text>
                     <Text style={[styles.chapterMeta, { color: activeTheme.colors.text.secondary }]}>
-                      {chapter.blocks?.length || 0} blocks • {chapter.readTime || 0}m read
+                      {chapter.scenes?.reduce((n: number, s: any) => n + (s.blocks?.length || 0), 0) || 0} blocks • {chapter.readTime || 0}m read
                     </Text>
                     <Text style={[styles.chapterDate, { color: activeTheme.colors.text.muted }]}>
                       Deleted: {new Date(chapter.updatedAt).toLocaleDateString()}
