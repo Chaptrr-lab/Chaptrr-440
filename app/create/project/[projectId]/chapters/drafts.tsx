@@ -13,8 +13,7 @@ import {
 import { ArrowLeft, Edit3, Clock, Trash2, Send } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { listChaptersByProject } from '@/lib/persist';
-import { addChapterToBroadcastQueue } from '@/lib/database';
+import { listChapters } from '@/lib/database';
 import { Chapter } from '@/types';
 
 interface DraftCardProps {
@@ -99,7 +98,7 @@ function DraftCard({ chapter, onPress, onDelete, onSendToBroadcast }: DraftCardP
           <View style={styles.draftInfo}>
             <Text style={styles.draftTitle}>{chapter.title || 'Untitled Chapter'}</Text>
             <Text style={styles.draftMeta}>
-              {chapter.blocks.length} blocks • Last saved: {new Date(chapter.updatedAt).toLocaleDateString()}
+              {chapter.scenes.reduce((n, s) => n + s.blocks.length, 0)} blocks • Last saved: {new Date(chapter.updatedAt).toLocaleDateString()}
             </Text>
             <Text style={styles.draftTime}>
               {new Date(chapter.updatedAt).toLocaleTimeString()}
@@ -129,21 +128,8 @@ export default function DraftsScreen() {
     const loadDrafts = async () => {
       try {
         setLoading(true);
-        const allChapters = await listChaptersByProject(projectId);
-        const drafts = allChapters.filter(chapter => chapter.status === 'DRAFT').map((ch, index) => ({
-          id: ch.id,
-          title: ch.title,
-          order: index,
-          projectId: ch.projectId,
-          blocks: ch.blocks || [],
-          readTime: Math.ceil((ch.blocks?.length || 0) * 0.5),
-          status: 'draft' as const,
-          version: 1,
-          createdAt: new Date(ch.updatedAt).toISOString(),
-          updatedAt: new Date(ch.updatedAt).toISOString(),
-          characterAppearances: [],
-          afterNote: ch.afterNote || ''
-        }));
+        const allChapters = await listChapters(projectId, { liveOnly: false });
+        const drafts = allChapters.filter(chapter => !chapter.live);
         console.log('Loaded drafts:', drafts.length, drafts);
         setDraftChapters(drafts);
       } catch (error) {
@@ -196,15 +182,8 @@ export default function DraftsScreen() {
     );
   };
 
-  const handleSendToBroadcast = async (chapterId: string) => {
-    if (!projectId) return;
-    try {
-      await addChapterToBroadcastQueue(projectId, chapterId);
-      Alert.alert('Success', 'Draft added to broadcast queue');
-    } catch (error) {
-      console.error('Error adding to broadcast:', error);
-      Alert.alert('Error', 'Failed to add draft to broadcast queue');
-    }
+  const handleSendToBroadcast = async (_chapterId: string) => {
+    Alert.alert('Broadcast', 'Broadcast queue is not available in this version.');
   };
 
   return (

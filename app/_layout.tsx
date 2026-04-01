@@ -150,7 +150,7 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
         
         // Merge with mock projects for explore feed
         setProjects(mockProjects);
-        setFeedPosts(generateFeedPosts(mockProjects));
+        setFeedPosts(generateFeedPosts());
         
         console.log('App initialization complete');
         setIsInitialized(true);

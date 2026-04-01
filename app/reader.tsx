@@ -250,10 +250,9 @@ export default function ReaderScreen() {
           <Text style={styles.chapterTitleLarge}>{currentChapter.title}</Text>
           
           <ChapterReader
-            blocks={(currentChapter.blocks || []).sort((a, b) => a.order - b.order)}
+            chapter={currentChapter}
             characters={characters}
             globalSpacing={currentChapter.globalSpacing || 0}
-            debug={false}
           />
           
           {currentChapter.afterNote && (
@@ -312,7 +311,7 @@ export default function ReaderScreen() {
               {/* First line preview */}
               {(() => {
                 const nextCh = currentProject.chapters[currentChapterIndex + 1];
-                const firstBlock = nextCh?.blocks?.[0];
+                const firstBlock = nextCh?.scenes?.[0]?.blocks?.[0];
                 return firstBlock?.content ? (
                   <Text style={styles.nextChapterFirstLine} numberOfLines={2}>{firstBlock.content}</Text>
                 ) : null;

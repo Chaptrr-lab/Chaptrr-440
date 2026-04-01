@@ -1,5 +1,6 @@
 import React, { useState, useEffect, memo } from 'react';
 import { View, Text, StyleSheet, Dimensions, Image, ScrollView } from 'react-native';
+import Svg, { Circle, Ellipse, Line, Path, G, Text as SvgText } from 'react-native-svg';
 import ShoutBubble from './ShoutBubble';
 import AnimatedShoutBubble from './AnimatedShoutBubble';
 import LoudBubble from './LoudBubble';
@@ -7,6 +8,228 @@ import MachineBubble from './MachineBubble';
 import BloomBubble from './BloomBubble';
 import SafeImage from '@/ui/SafeImage';
 import { Block, Character } from '@/types';
+
+// ---- Emotion Accessory overlays ----
+
+type EmotionType = NonNullable<NonNullable<Block['textStyle']>['emotionAccessory']>;
+
+const EMOTION_SIZE = 36;
+
+function EmotionAccessory({ emotion, color }: { emotion: EmotionType; color: string }) {
+  const s = EMOTION_SIZE;
+  const c = s / 2;
+
+  switch (emotion) {
+    case 'nervous': {
+      // Small sweat drops
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            {[0, 1, 2].map((i) => (
+              <Path
+                key={i}
+                d={`M ${8 + i * 10} ${10} Q ${8 + i * 10 - 4} ${20} ${8 + i * 10} ${24} Q ${8 + i * 10 + 4} ${20} ${8 + i * 10} ${10}`}
+                fill="#60a5fa"
+                opacity={0.75 - i * 0.15}
+              />
+            ))}
+          </Svg>
+        </View>
+      );
+    }
+    case 'embarrass': {
+      // Two blush ovals
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            <Ellipse cx={10} cy={22} rx={8} ry={5} fill="#f9a8d4" opacity={0.7} />
+            <Ellipse cx={26} cy={22} rx={8} ry={5} fill="#f9a8d4" opacity={0.7} />
+          </Svg>
+        </View>
+      );
+    }
+    case 'daze': {
+      // Spiral / stars
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            {[0, 1, 2].map((i) => {
+              const angle = (i / 3) * Math.PI * 2;
+              const r = 10;
+              const x = c + Math.cos(angle) * r;
+              const y = c + Math.sin(angle) * r;
+              return (
+                <G key={i}>
+                  <Circle cx={x} cy={y} r={3} fill="#fbbf24" opacity={0.9} />
+                  <Line x1={x - 5} y1={y} x2={x + 5} y2={y} stroke="#fbbf24" strokeWidth={1} opacity={0.5} />
+                  <Line x1={x} y1={y - 5} x2={x} y2={y + 5} stroke="#fbbf24" strokeWidth={1} opacity={0.5} />
+                </G>
+              );
+            })}
+          </Svg>
+        </View>
+      );
+    }
+    case 'fright': {
+      // Jagged spike lines radiating outward
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            {[0, 1, 2, 3].map((i) => {
+              const angle = (i / 4) * Math.PI * 2 + 0.3;
+              const x1 = c + Math.cos(angle) * 6;
+              const y1 = c + Math.sin(angle) * 6;
+              const x2 = c + Math.cos(angle) * 16;
+              const y2 = c + Math.sin(angle) * 16;
+              return <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={2} opacity={0.8} />;
+            })}
+          </Svg>
+        </View>
+      );
+    }
+    case 'sad': {
+      // Teardrop
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            <Path d={`M ${c} 8 Q ${c - 8} 20 ${c} 28 Q ${c + 8} 20 ${c} 8`} fill="#93c5fd" opacity={0.8} />
+          </Svg>
+        </View>
+      );
+    }
+    case 'shout': {
+      // Radiating impact lines
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            {[0, 1, 2, 3, 4, 5].map((i) => {
+              const angle = (i / 6) * Math.PI * 2;
+              const x2 = c + Math.cos(angle) * 15;
+              const y2 = c + Math.sin(angle) * 15;
+              return <Line key={i} x1={c} y1={c} x2={x2} y2={y2} stroke={color} strokeWidth={1.5} opacity={0.7} />;
+            })}
+          </Svg>
+        </View>
+      );
+    }
+    case 'whisper': {
+      // Three small dots
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            {[8, 18, 28].map((x) => (
+              <Circle key={x} cx={x} cy={c} r={3} fill="#d1d5db" opacity={0.6} />
+            ))}
+          </Svg>
+        </View>
+      );
+    }
+    case 'love': {
+      // Two small hearts
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            {[10, 24].map((cx, i) => (
+              <Path
+                key={i}
+                d={`M ${cx} ${c + 4} Q ${cx - 7} ${c - 6} ${cx - 7} ${c} Q ${cx - 7} ${c + 8} ${cx} ${c + 10} Q ${cx + 7} ${c + 8} ${cx + 7} ${c} Q ${cx + 7} ${c - 6} ${cx} ${c + 4}`}
+                fill="#f472b6"
+                opacity={0.85 - i * 0.2}
+                transform={`scale(${1 - i * 0.15}) translate(${i * 2}, 0)`}
+              />
+            ))}
+          </Svg>
+        </View>
+      );
+    }
+    case 'anger': {
+      // Cross/vein mark
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            <Path
+              d={`M ${c - 8} ${c} Q ${c - 4} ${c - 8} ${c} ${c} Q ${c + 4} ${c + 8} ${c + 8} ${c}`}
+              stroke="#ef4444"
+              strokeWidth={2}
+              fill="none"
+              opacity={0.85}
+            />
+            <Path
+              d={`M ${c} ${c - 8} Q ${c + 8} ${c - 4} ${c} ${c} Q ${c - 8} ${c + 4} ${c} ${c + 8}`}
+              stroke="#ef4444"
+              strokeWidth={2}
+              fill="none"
+              opacity={0.85}
+            />
+          </Svg>
+        </View>
+      );
+    }
+    case 'surprise': {
+      // Exclamation mark
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            <SvgText x={c} y={s - 6} fontSize={28} fill={color} textAnchor="middle" fontWeight="bold" opacity={0.9}>!</SvgText>
+          </Svg>
+        </View>
+      );
+    }
+    case 'think': {
+      // Ellipsis
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            {[6, 16, 26].map((x) => (
+              <Circle key={x} cx={x} cy={c + 4} r={4} fill="#9ca3af" opacity={0.7} />
+            ))}
+          </Svg>
+        </View>
+      );
+    }
+    case 'sarcasm': {
+      // Curved air-quote marks
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            <SvgText x={c} y={s - 4} fontSize={22} fill="#a78bfa" textAnchor="middle" opacity={0.85}>"</SvgText>
+          </Svg>
+        </View>
+      );
+    }
+    case 'cold': {
+      // Snowflake-ish asterisk
+      return (
+        <View style={emotionStyles.badge} pointerEvents="none">
+          <Svg width={s} height={s}>
+            {[0, 1, 2].map((i) => {
+              const angle = (i / 3) * Math.PI;
+              const x1 = c + Math.cos(angle) * 14;
+              const y1 = c + Math.sin(angle) * 14;
+              const x2 = c - Math.cos(angle) * 14;
+              const y2 = c - Math.sin(angle) * 14;
+              return <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#bae6fd" strokeWidth={2} opacity={0.8} />;
+            })}
+            <Circle cx={c} cy={c} r={3} fill="#bae6fd" opacity={0.9} />
+          </Svg>
+        </View>
+      );
+    }
+    default:
+      return null;
+  }
+}
+
+const emotionStyles = StyleSheet.create({
+  badge: {
+    position: 'absolute',
+    top: -EMOTION_SIZE / 2,
+    right: -EMOTION_SIZE / 2,
+    width: EMOTION_SIZE,
+    height: EMOTION_SIZE,
+    zIndex: 10,
+  },
+});
 
 interface BubbleRendererProps {
   block: Block;
@@ -34,7 +257,8 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
   const isItalic = textStyle?.isItalic || false;
   const bubbleType = textStyle?.bubbleType || 'plain';
   const characterId = textStyle?.characterId;
-  
+  const emotionAccessory = textStyle?.emotionAccessory;
+
   // Find character
   const character = characters.find(c => c.id === characterId);
   const bubbleColor = character?.color || '#6366f1';
@@ -54,20 +278,23 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
   if (bubbleType === 'plain') {
     return (
       <View style={wrapStyle}>
-        <Text style={[
-          styles.textContent,
-          { 
-            textAlign, 
-            fontWeight: isBold ? '700' : '400',
-            fontStyle: isItalic ? 'italic' : 'normal'
-          }
-        ]}>
-          {block.content}
-        </Text>
+        <View style={{ position: 'relative' }}>
+          <Text style={[
+            styles.textContent,
+            {
+              textAlign,
+              fontWeight: isBold ? '700' : '400',
+              fontStyle: isItalic ? 'italic' : 'normal'
+            }
+          ]}>
+            {block.content}
+          </Text>
+          {emotionAccessory && <EmotionAccessory emotion={emotionAccessory} color={bubbleColor} />}
+        </View>
       </View>
     );
   }
-  
+
   if (bubbleType === 'shout') {
     return (
       <View style={wrapStyle}>
@@ -76,9 +303,12 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
             {character.name}
           </Text>
         )}
-        <AnimatedShoutBubble fillColor={fillColor}>
-          {block.content}
-        </AnimatedShoutBubble>
+        <View style={{ position: 'relative' }}>
+          <AnimatedShoutBubble fillColor={fillColor}>
+            {block.content}
+          </AnimatedShoutBubble>
+          {emotionAccessory && <EmotionAccessory emotion={emotionAccessory} color={bubbleColor} />}
+        </View>
       </View>
     );
   }
@@ -89,7 +319,10 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
         {character && (
           <Text style={[styles.characterName, { color: bubbleColor, marginBottom: 4 }]}>{character.name}</Text>
         )}
-        <LoudBubble variant="concave" fillColor={fillColor}>{block.content}</LoudBubble>
+        <View style={{ position: 'relative' }}>
+          <LoudBubble variant="concave" fillColor={fillColor}>{block.content}</LoudBubble>
+          {emotionAccessory && <EmotionAccessory emotion={emotionAccessory} color={bubbleColor} />}
+        </View>
       </View>
     );
   }
@@ -100,7 +333,10 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
         {character && (
           <Text style={[styles.characterName, { color: bubbleColor, marginBottom: 4 }]}>{character.name}</Text>
         )}
-        <LoudBubble variant="convex" fillColor={fillColor}>{block.content}</LoudBubble>
+        <View style={{ position: 'relative' }}>
+          <LoudBubble variant="convex" fillColor={fillColor}>{block.content}</LoudBubble>
+          {emotionAccessory && <EmotionAccessory emotion={emotionAccessory} color={bubbleColor} />}
+        </View>
       </View>
     );
   }
@@ -111,7 +347,10 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
         {character && (
           <Text style={[styles.characterName, { color: bubbleColor, marginBottom: 4 }]}>{character.name}</Text>
         )}
-        <MachineBubble fillColor={fillColor}>{block.content}</MachineBubble>
+        <View style={{ position: 'relative' }}>
+          <MachineBubble fillColor={fillColor}>{block.content}</MachineBubble>
+          {emotionAccessory && <EmotionAccessory emotion={emotionAccessory} color={bubbleColor} />}
+        </View>
       </View>
     );
   }
@@ -122,7 +361,10 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
         {character && (
           <Text style={[styles.characterName, { color: bubbleColor, marginBottom: 4 }]}>{character.name}</Text>
         )}
-        <BloomBubble fillColor={fillColor}>{block.content}</BloomBubble>
+        <View style={{ position: 'relative' }}>
+          <BloomBubble fillColor={fillColor}>{block.content}</BloomBubble>
+          {emotionAccessory && <EmotionAccessory emotion={emotionAccessory} color={bubbleColor} />}
+        </View>
       </View>
     );
   }
@@ -178,7 +420,7 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
       {character && (
         <Text style={[
           styles.characterName,
-          { 
+          {
             color: bubbleColor,
             marginBottom: 4,
           }
@@ -186,17 +428,20 @@ const TextRenderer = memo(function TextRenderer({ block, characters }: { block: 
           {character.name}
         </Text>
       )}
-      <View style={getBubbleStyle()}>
-        {bubbleType === 'thinking' && (
-          <Text style={[getTextStyle(), { fontStyle: 'italic', opacity: 0.9 }]}>
-            {block.content}
-          </Text>
-        )}
-        {bubbleType === 'dialogue' && (
-          <Text style={getTextStyle()}>
-            {block.content}
-          </Text>
-        )}
+      <View style={{ position: 'relative' }}>
+        <View style={getBubbleStyle()}>
+          {bubbleType === 'thinking' && (
+            <Text style={[getTextStyle(), { fontStyle: 'italic', opacity: 0.9 }]}>
+              {block.content}
+            </Text>
+          )}
+          {bubbleType === 'dialogue' && (
+            <Text style={getTextStyle()}>
+              {block.content}
+            </Text>
+          )}
+        </View>
+        {emotionAccessory && <EmotionAccessory emotion={emotionAccessory} color={bubbleColor} />}
       </View>
     </View>
   );

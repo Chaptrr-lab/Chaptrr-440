@@ -81,31 +81,31 @@ export default function ChapterPreviewScreen() {
             
             if (persistedChapter) {
               // Convert persisted chapter to match Chapter interface
+              const flatBlocks = (persistedChapter.blocks || []).map((block: any, index: number) => ({
+                id: block.id || `block-${index}`,
+                type: block.type as 'text' | 'image' | 'BG',
+                content: block.content || '',
+                order: block.order ?? index,
+                spacing: Number(block.spacing) || 0,
+                textStyle: block.textStyle,
+                imageStyle: block.imageStyle,
+                backgroundStyle: block.backgroundStyle
+              }));
               chapterData = {
                 id: persistedChapter.id,
                 projectId: persistedChapter.projectId,
                 title: persistedChapter.title,
                 order: 0,
-                readTime: Math.ceil((persistedChapter.blocks?.length || 0) * 0.5),
+                scenes: [{ id: 'default', order: 0, blocks: flatBlocks }],
+                live: false,
+                editedSinceLive: true,
+                readTime: Math.ceil(flatBlocks.length * 0.5),
                 version: 1,
                 createdAt: new Date(persistedChapter.updatedAt).toISOString(),
                 updatedAt: new Date(persistedChapter.updatedAt).toISOString(),
                 characterAppearances: [],
-                status: persistedChapter.status.toLowerCase() as 'draft' | 'published',
                 globalSpacing: (persistedChapter as any).globalSpacing || 0,
                 afterNote: persistedChapter.afterNote || '',
-                blocks: (persistedChapter.blocks || [])
-                  .map((block: any, index: number) => ({
-                    id: block.id || `block-${index}`,
-                    chapterId: persistedChapter.id,
-                    type: block.type as 'text' | 'image' | 'BG',
-                    content: block.content || '',
-                    order: block.order ?? index,
-                    spacing: Number(block.spacing) || 0,
-                    textStyle: block.textStyle,
-                    imageStyle: block.imageStyle,
-                    backgroundStyle: block.backgroundStyle
-                  }))
               };
             }
           } catch (error) {
@@ -182,7 +182,7 @@ export default function ChapterPreviewScreen() {
       {/* Preview Banner */}
       <View style={styles.previewBanner}>
         <Text style={styles.previewBannerText}>
-          Preview — {chapter.status === 'draft' ? 'Unpublished' : 'Published'} (Only you can see this)
+          Preview — {chapter.live ? 'Published' : 'Unpublished'} (Only you can see this)
         </Text>
       </View>
       
@@ -237,10 +237,9 @@ export default function ChapterPreviewScreen() {
           <Text style={styles.chapterTitleLarge}>{chapter.title}</Text>
           
           <ChapterReader
-            blocks={(chapter.blocks || []).sort((a, b) => a.order - b.order)}
+            chapter={chapter}
             characters={characters}
             globalSpacing={chapter.globalSpacing ?? 0}
-            debug={false}
           />
           
           {chapter.afterNote && (

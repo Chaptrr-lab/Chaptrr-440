@@ -178,7 +178,7 @@ export default function ExploreScreen() {
 
   useEffect(() => {
     const loadInitialData = async () => {
-      const posts = generateFeedPosts(mockProjects);
+      const posts = generateFeedPosts();
       setProjects(mockProjects);
       setStoreFeedPosts(posts);
       setFeedPosts(posts);
@@ -215,7 +215,7 @@ export default function ExploreScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     setTimeout(() => {
-      const posts = generateFeedPosts(mockProjects);
+      const posts = generateFeedPosts();
       setFeedPosts(posts);
       setRefreshing(false);
     }, 1000);

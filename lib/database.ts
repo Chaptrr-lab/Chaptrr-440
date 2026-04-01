@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 import AsyncStorage from './async-storage';
-import { Character, Chapter, Project, Block, RichBlock, CustomBubble } from '@/types';
+import { Character, Chapter, Project, Block, RichBlock, CustomBubble, Scene, TemplatePack, ReaderAccountSettings } from '@/types';
 
 // Storage keys for web
 const STORAGE_KEYS = {
@@ -10,6 +10,8 @@ const STORAGE_KEYS = {
   CHAPTERS: 'chaptrr_chapters',
   BLOCKS: 'chaptrr_blocks',
   CUSTOM_BUBBLES: 'chaptrr_custom_bubbles',
+  TEMPLATE_PACKS: 'chaptrr_template_packs',
+  READER_SETTINGS: 'chaptrr_reader_settings',
   INITIALIZED: 'chaptrr_initialized'
 };
 
@@ -137,6 +139,8 @@ export const initializeDatabase = async (): Promise<void> => {
       await setWebData(STORAGE_KEYS.CHAPTERS, []);
       await setWebData(STORAGE_KEYS.BLOCKS, []);
       await setWebData(STORAGE_KEYS.CUSTOM_BUBBLES, []);
+      await setWebData(STORAGE_KEYS.TEMPLATE_PACKS, []);
+      await setWebData(STORAGE_KEYS.READER_SETTINGS, []);
       await AsyncStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
     }
     console.log('Web storage initialized successfully');
@@ -194,6 +198,12 @@ export const initializeDatabase = async (): Promise<void> => {
         price REAL,
         updated_at TEXT,
         after_note TEXT,
+        scenes TEXT,
+        live_scenes TEXT,
+        live INTEGER NOT NULL DEFAULT 0,
+        scheduled TEXT,
+        live_at TEXT,
+        edited_since_live INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
       );
     `);
@@ -204,6 +214,13 @@ export const initializeDatabase = async (): Promise<void> => {
     } catch (e) {
       // Column already exists, ignore
     }
+    // New v4 chapter columns
+    try { db.execSync(`ALTER TABLE chapters ADD COLUMN scenes TEXT;`); } catch (e) {}
+    try { db.execSync(`ALTER TABLE chapters ADD COLUMN live_scenes TEXT;`); } catch (e) {}
+    try { db.execSync(`ALTER TABLE chapters ADD COLUMN live INTEGER NOT NULL DEFAULT 0;`); } catch (e) {}
+    try { db.execSync(`ALTER TABLE chapters ADD COLUMN scheduled TEXT;`); } catch (e) {}
+    try { db.execSync(`ALTER TABLE chapters ADD COLUMN live_at TEXT;`); } catch (e) {}
+    try { db.execSync(`ALTER TABLE chapters ADD COLUMN edited_since_live INTEGER NOT NULL DEFAULT 0;`); } catch (e) {}
 
     // Blocks table
     db.execSync(`
@@ -295,9 +312,27 @@ export const initializeDatabase = async (): Promise<void> => {
       );
     `);
 
+    // Template packs table
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS template_packs (
+        id TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        updated_at TEXT
+      );
+    `);
+
+    // Reader settings table
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS reader_settings (
+        user_id TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        updated_at TEXT
+      );
+    `);
+
     // Create indexes
     db.execSync(`CREATE INDEX IF NOT EXISTS idx_chars_project ON characters(project_id);`);
-    db.execSync(`CREATE INDEX IF NOT EXISTS idx_chapters_project ON chapters(project_id, status);`);
+    db.execSync(`CREATE INDEX IF NOT EXISTS idx_chapters_project ON chapters(project_id, live);`);
     db.execSync(`CREATE INDEX IF NOT EXISTS idx_blocks_chapter ON blocks(chapter_id, block_order);`);
     db.execSync(`CREATE INDEX IF NOT EXISTS idx_custom_bubbles_project ON custom_bubbles(project_id);`);
 
@@ -529,138 +564,105 @@ export const listCharacters = async (projectId: string): Promise<Character[]> =>
 };
 
 // Chapter operations
-export const createChapter = async (projectId: string, data: { title: string }): Promise<{ id: string; status: 'DRAFT' }> => {
+
+const defaultScene = (): Scene => ({
+  id: `scene-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  order: 0,
+  blocks: []
+});
+
+export const createChapter = async (projectId: string, data: { title: string }): Promise<{ id: string }> => {
   const id = `chapter-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const now = new Date().toISOString();
-  
+  const initialScenes: Scene[] = [defaultScene()];
+  const scenesJson = JSON.stringify(initialScenes);
+
   if (Platform.OS === 'web') {
     const chapters = await getWebData<any>(STORAGE_KEYS.CHAPTERS);
-    const existingOrders = chapters.filter((c: any) => c.project_id === projectId).map((c: any) => c.chapter_order || 0);
+    const existingOrders = chapters
+      .filter((c: any) => c.project_id === projectId)
+      .map((c: any) => c.chapter_order || 0);
     const nextOrder = existingOrders.length > 0 ? Math.max(0, Math.max(...existingOrders)) + 1 : 0;
-    
+
     chapters.push({
       id,
       project_id: projectId,
       title: data.title,
       chapter_order: nextOrder,
-      status: 'DRAFT',
-      published_at: null,
+      live: 0,
+      edited_since_live: 0,
+      scenes: scenesJson,
+      live_scenes: null,
+      scheduled: null,
+      live_at: null,
       updated_at: now,
       after_note: ''
     });
     await setWebData(STORAGE_KEYS.CHAPTERS, chapters);
     await touchProject(projectId);
-    
-    console.log('Chapter created (web):', { id, title: data.title, status: 'DRAFT' });
-    return { id, status: 'DRAFT' };
+    console.log('Chapter created (web):', { id, title: data.title });
+    return { id };
   }
 
   if (!db) throw new Error('Database not initialized');
-  
-  // Get next order number
+
   const maxOrderResult = db.getFirstSync(
     `SELECT MAX(chapter_order) as max_order FROM chapters WHERE project_id = ?`,
     [projectId]
   ) as any;
-  
   const nextOrder = (maxOrderResult?.max_order || 0) + 1;
-  
+
   try {
     db.runSync(
-      `INSERT INTO chapters (id, project_id, title, chapter_order, status, updated_at) 
-       VALUES (?, ?, ?, ?, 'DRAFT', ?)`,
-      [id, projectId, data.title, nextOrder, now]
+      `INSERT INTO chapters (id, project_id, title, chapter_order, status, live, edited_since_live, scenes, updated_at)
+       VALUES (?, ?, ?, ?, 'DRAFT', 0, 0, ?, ?)`,
+      [id, projectId, data.title, nextOrder, scenesJson, now]
     );
-    
     await touchProject(projectId);
-    
-    console.log('Chapter created:', { id, title: data.title, status: 'DRAFT' });
-    return { id, status: 'DRAFT' };
+    console.log('Chapter created:', { id, title: data.title });
+    return { id };
   } catch (error) {
     console.error('Error creating chapter:', error);
     throw error;
   }
 };
 
-export const updateChapter = async (id: string, patch: Partial<{ title: string; status: 'DRAFT' | 'PUBLISHED'; published_at?: string | null; spacing?: number; afterNote?: string; globalSpacing?: number }>): Promise<void> => {
+export const updateChapter = async (
+  id: string,
+  patch: Partial<{
+    title: string;
+    afterNote: string;
+    globalSpacing: number;
+  }>
+): Promise<void> => {
   if (Platform.OS === 'web') {
     const chapters = await getWebData<any>(STORAGE_KEYS.CHAPTERS);
     const index = chapters.findIndex((c: any) => c.id === id);
     if (index === -1) throw new Error('Chapter not found');
-    
     const chapter = chapters[index];
     if (patch.title !== undefined) chapter.title = patch.title;
-    if (patch.status !== undefined) {
-      chapter.status = patch.status;
-      if (patch.status === 'PUBLISHED' && !patch.published_at) {
-        chapter.published_at = new Date().toISOString();
-      }
-    }
-    if (patch.published_at !== undefined) chapter.published_at = patch.published_at;
-    if (patch.spacing !== undefined) chapter.spacing = patch.spacing;
     if (patch.globalSpacing !== undefined) chapter.global_spacing = patch.globalSpacing;
     if (patch.afterNote !== undefined) chapter.after_note = patch.afterNote;
     chapter.updated_at = new Date().toISOString();
-    
     await setWebData(STORAGE_KEYS.CHAPTERS, chapters);
     await touchProject(chapter.project_id);
-    
     console.log('Chapter updated (web):', { id, patch });
     return;
   }
 
   if (!db) throw new Error('Database not initialized');
-  
   const updates: string[] = [];
   const values: any[] = [];
-  
-  if (patch.title !== undefined) {
-    updates.push('title = ?');
-    values.push(patch.title);
-  }
-  if (patch.status !== undefined) {
-    updates.push('status = ?');
-    values.push(patch.status);
-    
-    if (patch.status === 'PUBLISHED' && !patch.published_at) {
-      updates.push('published_at = ?');
-      values.push(new Date().toISOString());
-    }
-  }
-  if (patch.published_at !== undefined) {
-    updates.push('published_at = ?');
-    values.push(patch.published_at);
-  }
-  if (patch.spacing !== undefined) {
-    updates.push('spacing = ?');
-    values.push(patch.spacing);
-  }
-  if (patch.globalSpacing !== undefined) {
-    updates.push('global_spacing = ?');
-    values.push(patch.globalSpacing);
-  }
-  if (patch.afterNote !== undefined) {
-    updates.push('after_note = ?');
-    values.push(patch.afterNote);
-  }
-  
+  if (patch.title !== undefined) { updates.push('title = ?'); values.push(patch.title); }
+  if (patch.globalSpacing !== undefined) { updates.push('global_spacing = ?'); values.push(patch.globalSpacing); }
+  if (patch.afterNote !== undefined) { updates.push('after_note = ?'); values.push(patch.afterNote); }
   updates.push('updated_at = ?');
   values.push(new Date().toISOString());
-  
   values.push(id);
-  
   try {
-    db.runSync(
-      `UPDATE chapters SET ${updates.join(', ')} WHERE id = ?`,
-      values
-    );
-    
-    // Get project_id and update project timestamp
+    db.runSync(`UPDATE chapters SET ${updates.join(', ')} WHERE id = ?`, values);
     const chapter = db.getFirstSync('SELECT project_id FROM chapters WHERE id = ?', [id]) as any;
-    if (chapter?.project_id) {
-      await touchProject(chapter.project_id);
-    }
-    
+    if (chapter?.project_id) await touchProject(chapter.project_id);
     console.log('Chapter updated:', { id, patch });
   } catch (error) {
     console.error('Error updating chapter:', error);
@@ -668,64 +670,256 @@ export const updateChapter = async (id: string, patch: Partial<{ title: string; 
   }
 };
 
-export const listChapters = async (projectId: string, options: { includeDrafts?: boolean } = { includeDrafts: true }): Promise<Chapter[]> => {
+// Save the writer's working scenes (does not affect what readers see)
+export const updateChapterScenes = async (chapterId: string, scenes: Scene[]): Promise<void> => {
+  const now = new Date().toISOString();
+  const scenesJson = JSON.stringify(scenes);
+
+  if (Platform.OS === 'web') {
+    const chapters = await getWebData<any>(STORAGE_KEYS.CHAPTERS);
+    const index = chapters.findIndex((c: any) => c.id === chapterId);
+    if (index === -1) throw new Error('Chapter not found');
+    chapters[index].scenes = scenesJson;
+    // If live, mark as edited
+    if (chapters[index].live === 1) chapters[index].edited_since_live = 1;
+    chapters[index].updated_at = now;
+    await setWebData(STORAGE_KEYS.CHAPTERS, chapters);
+    await touchProject(chapters[index].project_id);
+    return;
+  }
+
+  if (!db) throw new Error('Database not initialized');
+  const row = db.getFirstSync('SELECT project_id, live FROM chapters WHERE id = ?', [chapterId]) as any;
+  if (!row) throw new Error('Chapter not found');
+  db.runSync(
+    `UPDATE chapters SET scenes = ?, edited_since_live = ?, updated_at = ? WHERE id = ?`,
+    [scenesJson, row.live ? 1 : 0, now, chapterId]
+  );
+  await touchProject(row.project_id);
+};
+
+// Go Live: make chapter visible to readers
+export const goLive = async (chapterId: string): Promise<void> => {
+  const now = new Date().toISOString();
+
+  if (Platform.OS === 'web') {
+    const chapters = await getWebData<any>(STORAGE_KEYS.CHAPTERS);
+    const index = chapters.findIndex((c: any) => c.id === chapterId);
+    if (index === -1) throw new Error('Chapter not found');
+    const ch = chapters[index];
+    ch.live = 1;
+    ch.live_scenes = ch.scenes;
+    ch.live_at = now;
+    ch.edited_since_live = 0;
+    ch.scheduled = null;
+    ch.updated_at = now;
+    await setWebData(STORAGE_KEYS.CHAPTERS, chapters);
+    await touchProject(ch.project_id);
+    return;
+  }
+
+  if (!db) throw new Error('Database not initialized');
+  const row = db.getFirstSync('SELECT project_id, scenes FROM chapters WHERE id = ?', [chapterId]) as any;
+  if (!row) throw new Error('Chapter not found');
+  db.runSync(
+    `UPDATE chapters SET live = 1, live_scenes = ?, live_at = ?, edited_since_live = 0, scheduled = NULL, updated_at = ? WHERE id = ?`,
+    [row.scenes, now, now, chapterId]
+  );
+  await touchProject(row.project_id);
+};
+
+// Push Update: push writer's current scenes to readers
+export const pushUpdate = async (chapterId: string): Promise<void> => {
+  const now = new Date().toISOString();
+
+  if (Platform.OS === 'web') {
+    const chapters = await getWebData<any>(STORAGE_KEYS.CHAPTERS);
+    const index = chapters.findIndex((c: any) => c.id === chapterId);
+    if (index === -1) throw new Error('Chapter not found');
+    const ch = chapters[index];
+    ch.live_scenes = ch.scenes;
+    ch.edited_since_live = 0;
+    ch.updated_at = now;
+    await setWebData(STORAGE_KEYS.CHAPTERS, chapters);
+    await touchProject(ch.project_id);
+    return;
+  }
+
+  if (!db) throw new Error('Database not initialized');
+  const row = db.getFirstSync('SELECT project_id, scenes FROM chapters WHERE id = ?', [chapterId]) as any;
+  if (!row) throw new Error('Chapter not found');
+  db.runSync(
+    `UPDATE chapters SET live_scenes = ?, edited_since_live = 0, updated_at = ? WHERE id = ?`,
+    [row.scenes, now, chapterId]
+  );
+  await touchProject(row.project_id);
+};
+
+// Take Down: hide chapter from readers
+export const takeDown = async (chapterId: string): Promise<void> => {
+  const now = new Date().toISOString();
+
+  if (Platform.OS === 'web') {
+    const chapters = await getWebData<any>(STORAGE_KEYS.CHAPTERS);
+    const index = chapters.findIndex((c: any) => c.id === chapterId);
+    if (index === -1) throw new Error('Chapter not found');
+    const ch = chapters[index];
+    ch.live = 0;
+    ch.live_scenes = null;
+    ch.edited_since_live = 0;
+    ch.updated_at = now;
+    await setWebData(STORAGE_KEYS.CHAPTERS, chapters);
+    await touchProject(ch.project_id);
+    return;
+  }
+
+  if (!db) throw new Error('Database not initialized');
+  const row = db.getFirstSync('SELECT project_id FROM chapters WHERE id = ?', [chapterId]) as any;
+  if (!row) throw new Error('Chapter not found');
+  db.runSync(
+    `UPDATE chapters SET live = 0, live_scenes = NULL, edited_since_live = 0, updated_at = ? WHERE id = ?`,
+    [now, chapterId]
+  );
+  await touchProject(row.project_id);
+};
+
+// Schedule a chapter to go live at a specific date/time
+export const scheduleChapter = async (
+  chapterId: string,
+  schedule: { date: string; time: string; timezone: string }
+): Promise<void> => {
+  const now = new Date().toISOString();
+  const scheduledJson = JSON.stringify(schedule);
+
+  if (Platform.OS === 'web') {
+    const chapters = await getWebData<any>(STORAGE_KEYS.CHAPTERS);
+    const index = chapters.findIndex((c: any) => c.id === chapterId);
+    if (index === -1) throw new Error('Chapter not found');
+    chapters[index].scheduled = scheduledJson;
+    chapters[index].updated_at = now;
+    await setWebData(STORAGE_KEYS.CHAPTERS, chapters);
+    await touchProject(chapters[index].project_id);
+    return;
+  }
+
+  if (!db) throw new Error('Database not initialized');
+  const row = db.getFirstSync('SELECT project_id FROM chapters WHERE id = ?', [chapterId]) as any;
+  if (!row) throw new Error('Chapter not found');
+  db.runSync(
+    `UPDATE chapters SET scheduled = ?, updated_at = ? WHERE id = ?`,
+    [scheduledJson, now, chapterId]
+  );
+  await touchProject(row.project_id);
+};
+
+// Cancel a scheduled release
+export const cancelSchedule = async (chapterId: string): Promise<void> => {
+  const now = new Date().toISOString();
+
+  if (Platform.OS === 'web') {
+    const chapters = await getWebData<any>(STORAGE_KEYS.CHAPTERS);
+    const index = chapters.findIndex((c: any) => c.id === chapterId);
+    if (index === -1) throw new Error('Chapter not found');
+    chapters[index].scheduled = null;
+    chapters[index].updated_at = now;
+    await setWebData(STORAGE_KEYS.CHAPTERS, chapters);
+    await touchProject(chapters[index].project_id);
+    return;
+  }
+
+  if (!db) throw new Error('Database not initialized');
+  const row = db.getFirstSync('SELECT project_id FROM chapters WHERE id = ?', [chapterId]) as any;
+  if (!row) throw new Error('Chapter not found');
+  db.runSync(
+    `UPDATE chapters SET scheduled = NULL, updated_at = ? WHERE id = ?`,
+    [now, chapterId]
+  );
+  await touchProject(row.project_id);
+};
+
+// Discard edits: revert working scenes to live scenes
+export const discardEdits = async (chapterId: string): Promise<void> => {
+  const now = new Date().toISOString();
+
+  if (Platform.OS === 'web') {
+    const chapters = await getWebData<any>(STORAGE_KEYS.CHAPTERS);
+    const index = chapters.findIndex((c: any) => c.id === chapterId);
+    if (index === -1) throw new Error('Chapter not found');
+    const ch = chapters[index];
+    if (ch.live_scenes) ch.scenes = ch.live_scenes;
+    ch.edited_since_live = 0;
+    ch.updated_at = now;
+    await setWebData(STORAGE_KEYS.CHAPTERS, chapters);
+    await touchProject(ch.project_id);
+    return;
+  }
+
+  if (!db) throw new Error('Database not initialized');
+  const row = db.getFirstSync('SELECT project_id, live_scenes FROM chapters WHERE id = ?', [chapterId]) as any;
+  if (!row) throw new Error('Chapter not found');
+  if (row.live_scenes) {
+    db.runSync(
+      `UPDATE chapters SET scenes = ?, edited_since_live = 0, updated_at = ? WHERE id = ?`,
+      [row.live_scenes, now, chapterId]
+    );
+  }
+  await touchProject(row.project_id);
+};
+
+const rowToChapter = (row: any, scenes: Scene[], liveScenes?: Scene[]): Chapter => ({
+  id: row.id,
+  title: row.title,
+  order: row.chapter_order || 0,
+  projectId: row.project_id,
+  scenes,
+  liveScenes,
+  live: row.live === 1 || row.live === true,
+  scheduled: row.scheduled ? safeJSONParse(row.scheduled, undefined, 'scheduled') : undefined,
+  liveAt: row.live_at || undefined,
+  editedSinceLive: row.edited_since_live === 1 || row.edited_since_live === true,
+  readTime: Math.max(1, Math.ceil(scenes.reduce((acc, s) => acc + s.blocks.length, 0) * 0.5)),
+  version: 1,
+  createdAt: new Date().toISOString(),
+  updatedAt: row.updated_at || new Date().toISOString(),
+  characterAppearances: scenes
+    .flatMap(s => s.blocks)
+    .filter(b => b.textStyle?.characterId)
+    .map(b => b.textStyle!.characterId!)
+    .filter((id, i, arr) => arr.indexOf(id) === i),
+  globalSpacing: row.global_spacing ?? 0,
+  afterNote: row.after_note || ''
+});
+
+export const listChapters = async (projectId: string, options: { liveOnly?: boolean } = {}): Promise<Chapter[]> => {
   if (Platform.OS === 'web') {
     const chapters = await getWebData<any>(STORAGE_KEYS.CHAPTERS);
     let filtered = chapters.filter((c: any) => c.project_id === projectId);
-    
-    if (!options.includeDrafts) {
-      filtered = filtered.filter((c: any) => c.status === 'PUBLISHED');
-    }
-    
+    if (options.liveOnly) filtered = filtered.filter((c: any) => c.live === 1);
     return filtered
-      .sort((a: any, b: any) => {
-        if (a.status !== b.status) {
-          return a.status === 'PUBLISHED' ? -1 : 1;
-        }
-        return (a.chapter_order || 0) - (b.chapter_order || 0);
-      })
-      .map((row: any) => ({
-        id: row.id,
-        title: row.title,
-        order: row.chapter_order || 0,
-        projectId: row.project_id,
-        blocks: [],
-        readTime: 3,
-        status: (row.status === 'PUBLISHED' ? 'published' : 'draft') as 'draft' | 'published',
-        version: 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: row.updated_at || new Date().toISOString(),
-        characterAppearances: []
-      }));
+      .sort((a: any, b: any) => (a.chapter_order || 0) - (b.chapter_order || 0))
+      .map((row: any) => {
+        const scenes = safeJSONParse<Scene[]>(row.scenes, [{ id: 'default', order: 0, blocks: [] }], 'scenes');
+        const liveScenes = row.live_scenes
+          ? safeJSONParse<Scene[]>(row.live_scenes, undefined as unknown as Scene[], 'liveScenes')
+          : undefined;
+        return rowToChapter(row, scenes, liveScenes);
+      });
   }
 
   if (!db) return [];
-  
   try {
     let query = `SELECT * FROM chapters WHERE project_id = ?`;
-    const params = [projectId];
-    
-    if (!options.includeDrafts) {
-      query += ` AND status = 'PUBLISHED'`;
-    }
-    
-    query += ` ORDER BY status DESC, chapter_order ASC`;
-    
+    const params: any[] = [projectId];
+    if (options.liveOnly) { query += ` AND live = 1`; }
+    query += ` ORDER BY chapter_order ASC`;
     const rows = db.getAllSync(query, params) as any[];
-    
-    return rows.map(row => ({
-      id: row.id,
-      title: row.title,
-      order: row.chapter_order,
-      projectId: row.project_id,
-      blocks: [],
-      readTime: 3,
-      status: (row.status === 'PUBLISHED' ? 'published' : 'draft') as 'draft' | 'published',
-      version: 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: row.updated_at || new Date().toISOString(),
-      characterAppearances: []
-    }));
+    return rows.map(row => {
+      const scenes = safeJSONParse<Scene[]>(row.scenes, [{ id: 'default', order: 0, blocks: [] }], 'scenes');
+      const liveScenes = row.live_scenes
+        ? safeJSONParse<Scene[]>(row.live_scenes, undefined as unknown as Scene[], 'liveScenes')
+        : undefined;
+      return rowToChapter(row, scenes, liveScenes);
+    });
   } catch (error) {
     console.error('Error listing chapters:', error);
     return [];
@@ -737,61 +931,22 @@ export const getChapter = async (id: string): Promise<Chapter | null> => {
     const chapters = await getWebData<any>(STORAGE_KEYS.CHAPTERS);
     const row = chapters.find((c: any) => c.id === id);
     if (!row) return null;
-    
-    const blocks = await listBlocks(id);
-    
-    return {
-      id: row.id,
-      title: row.title,
-      order: row.chapter_order || 0,
-      projectId: row.project_id,
-      blocks,
-      readTime: Math.max(1, Math.ceil(blocks.length * 0.5)),
-      status: (row.status === 'PUBLISHED' ? 'published' : 'draft') as 'draft' | 'published',
-      version: 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: row.updated_at || new Date().toISOString(),
-      characterAppearances: blocks
-        .filter(block => block.textStyle?.characterId)
-        .map(block => block.textStyle!.characterId!)
-        .filter((id, index, arr) => arr.indexOf(id) === index),
-      spacing: row.spacing || 2,
-      globalSpacing: row.global_spacing ?? 0,
-      afterNote: row.after_note || ''
-    };
+    const scenes = safeJSONParse<Scene[]>(row.scenes, [{ id: 'default', order: 0, blocks: [] }], 'scenes');
+    const liveScenes = row.live_scenes
+      ? safeJSONParse<Scene[]>(row.live_scenes, undefined as unknown as Scene[], 'liveScenes')
+      : undefined;
+    return rowToChapter(row, scenes, liveScenes);
   }
 
   if (!db) return null;
-  
   try {
-    const row = db.getFirstSync(
-      `SELECT * FROM chapters WHERE id = ?`,
-      [id]
-    ) as any;
-    
+    const row = db.getFirstSync(`SELECT * FROM chapters WHERE id = ?`, [id]) as any;
     if (!row) return null;
-    
-    const blocks = await listBlocks(id);
-    
-    return {
-      id: row.id,
-      title: row.title,
-      order: row.chapter_order,
-      projectId: row.project_id,
-      blocks,
-      readTime: Math.max(1, Math.ceil(blocks.length * 0.5)),
-      status: (row.status === 'PUBLISHED' ? 'published' : 'draft') as 'draft' | 'published',
-      version: 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: row.updated_at || new Date().toISOString(),
-      characterAppearances: blocks
-        .filter(block => block.textStyle?.characterId)
-        .map(block => block.textStyle!.characterId!)
-        .filter((id, index, arr) => arr.indexOf(id) === index),
-      spacing: row.spacing || 2,
-      globalSpacing: row.global_spacing ?? 0,
-      afterNote: row.after_note || ''
-    };
+    const scenes = safeJSONParse<Scene[]>(row.scenes, [{ id: 'default', order: 0, blocks: [] }], 'scenes');
+    const liveScenes = row.live_scenes
+      ? safeJSONParse<Scene[]>(row.live_scenes, undefined as unknown as Scene[], 'liveScenes')
+      : undefined;
+    return rowToChapter(row, scenes, liveScenes);
   } catch (error) {
     console.error('Error getting chapter:', error);
     return null;
@@ -1146,7 +1301,7 @@ export const getProject = async (id: string): Promise<Project | null> => {
     if (!row) return null;
     
     const characters = await listCharacters(id);
-    const chapters = await listChapters(id, { includeDrafts: true });
+    const chapters = await listChapters(id, { liveOnly: false });
     
     const tags = Array.isArray(row.tags) ? row.tags : safeJSONParse(row.tags, [], 'tags');
     const longDescription = Array.isArray(row.long_description) ? row.long_description : safeJSONParse(row.long_description, [], 'longDescription');
@@ -1186,7 +1341,7 @@ export const getProject = async (id: string): Promise<Project | null> => {
     if (!row) return null;
     
     const characters = await listCharacters(id);
-    const chapters = await listChapters(id, { includeDrafts: true });
+    const chapters = await listChapters(id, { liveOnly: false });
     
     return {
       id: row.id,
@@ -1347,87 +1502,82 @@ export const touchProject = async (projectId: string): Promise<void> => {
   }
 };
 
-export const addChapterToBroadcastQueue = async (projectId: string, chapterId: string): Promise<void> => {
+// Reader settings
+export const getReaderSettings = async (userId: string): Promise<ReaderAccountSettings> => {
+  const defaults: ReaderAccountSettings = { textSizeMultiplier: 1.0, theme: 'system' };
+
   if (Platform.OS === 'web') {
-    const projects = await getWebData<any>(STORAGE_KEYS.PROJECTS);
-    const index = projects.findIndex((p: any) => p.id === projectId);
-    if (index === -1) throw new Error('Project not found');
-    
-    const project = projects[index];
-    let broadcast: any = safeJSONParse(project.broadcast, { queue: [] }, 'broadcast');
-    
-    if (!broadcast.queue) broadcast.queue = [];
-    if (!broadcast.queue.includes(chapterId)) {
-      broadcast.queue.push(chapterId);
-      project.broadcast = JSON.stringify(broadcast);
-      await setWebData(STORAGE_KEYS.PROJECTS, projects);
-      console.log('Chapter added to broadcast queue (web):', { projectId, chapterId });
-    }
-    return;
+    const allSettings = await getWebData<any>(STORAGE_KEYS.READER_SETTINGS);
+    const row = allSettings.find((s: any) => s.user_id === userId);
+    return row ? safeJSONParse<ReaderAccountSettings>(row.data, defaults, 'readerSettings') : defaults;
   }
 
-  if (!db) throw new Error('Database not initialized');
-  
+  if (!db) return defaults;
   try {
-    const project = db.getFirstSync('SELECT * FROM projects WHERE id = ?', [projectId]) as any;
-    if (!project) throw new Error('Project not found');
-    
-    let broadcast: any = safeJSONParse(project.broadcast, { queue: [] }, 'broadcast');
-    
-    if (!broadcast.queue) broadcast.queue = [];
-    if (!broadcast.queue.includes(chapterId)) {
-      broadcast.queue.push(chapterId);
-      db.runSync('UPDATE projects SET broadcast = ? WHERE id = ?', [JSON.stringify(broadcast), projectId]);
-      console.log('Chapter added to broadcast queue:', { projectId, chapterId });
-    }
-  } catch (error) {
-    console.error('Error adding chapter to broadcast queue:', error);
-    throw error;
+    const row = db.getFirstSync('SELECT data FROM reader_settings WHERE user_id = ?', [userId]) as any;
+    return row ? safeJSONParse<ReaderAccountSettings>(row.data, defaults, 'readerSettings') : defaults;
+  } catch (e) {
+    return defaults;
   }
 };
 
-export const getBroadcastData = async (projectId: string): Promise<any> => {
-  if (Platform.OS === 'web') {
-    const projects = await getWebData<any>(STORAGE_KEYS.PROJECTS);
-    const project = projects.find((p: any) => p.id === projectId);
-    if (!project) return null;
-    
-    return safeJSONParse(project.broadcast, { queue: [], tags: [], shortDesc: '', coverUrl: '' }, 'broadcast');
-  }
+export const updateReaderSettings = async (userId: string, settings: Partial<ReaderAccountSettings>): Promise<void> => {
+  const current = await getReaderSettings(userId);
+  const merged = { ...current, ...settings };
+  const data = JSON.stringify(merged);
+  const now = new Date().toISOString();
 
-  if (!db) return null;
-  
-  try {
-    const project = db.getFirstSync('SELECT broadcast FROM projects WHERE id = ?', [projectId]) as any;
-    if (!project) return null;
-    
-    return safeJSONParse(project.broadcast, { queue: [], tags: [], shortDesc: '', coverUrl: '' }, 'broadcast');
-  } catch (error) {
-    console.error('Error getting broadcast data:', error);
-    return null;
-  }
-};
-
-export const updateBroadcastData = async (projectId: string, data: any): Promise<void> => {
   if (Platform.OS === 'web') {
-    const projects = await getWebData<any>(STORAGE_KEYS.PROJECTS);
-    const index = projects.findIndex((p: any) => p.id === projectId);
-    if (index === -1) throw new Error('Project not found');
-    
-    projects[index].broadcast = JSON.stringify(data);
-    await setWebData(STORAGE_KEYS.PROJECTS, projects);
-    console.log('Broadcast data updated (web):', { projectId });
+    const allSettings = await getWebData<any>(STORAGE_KEYS.READER_SETTINGS);
+    const index = allSettings.findIndex((s: any) => s.user_id === userId);
+    if (index === -1) allSettings.push({ user_id: userId, data, updated_at: now });
+    else { allSettings[index].data = data; allSettings[index].updated_at = now; }
+    await setWebData(STORAGE_KEYS.READER_SETTINGS, allSettings);
     return;
   }
 
-  if (!db) throw new Error('Database not initialized');
-  
+  if (!db) return;
+  db.runSync(
+    `INSERT INTO reader_settings (user_id, data, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+    [userId, data, now]
+  );
+};
+
+// Template pack storage
+export const saveTemplatePack = async (pack: TemplatePack): Promise<void> => {
+  const data = JSON.stringify(pack);
+  const now = new Date().toISOString();
+
+  if (Platform.OS === 'web') {
+    const packs = await getWebData<any>(STORAGE_KEYS.TEMPLATE_PACKS);
+    const index = packs.findIndex((p: any) => p.id === pack.id);
+    if (index === -1) packs.push({ id: pack.id, data, updated_at: now });
+    else { packs[index].data = data; packs[index].updated_at = now; }
+    await setWebData(STORAGE_KEYS.TEMPLATE_PACKS, packs);
+    return;
+  }
+
+  if (!db) return;
+  db.runSync(
+    `INSERT INTO template_packs (id, data, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+    [pack.id, data, now]
+  );
+};
+
+export const listTemplatePacks = async (): Promise<TemplatePack[]> => {
+  if (Platform.OS === 'web') {
+    const packs = await getWebData<any>(STORAGE_KEYS.TEMPLATE_PACKS);
+    return packs.map((p: any) => safeJSONParse<TemplatePack>(p.data, { id: p.id, name: '', description: '', genre: [], previewImageUrl: '' }, 'templatePack'));
+  }
+
+  if (!db) return [];
   try {
-    db.runSync('UPDATE projects SET broadcast = ? WHERE id = ?', [JSON.stringify(data), projectId]);
-    console.log('Broadcast data updated:', { projectId });
-  } catch (error) {
-    console.error('Error updating broadcast data:', error);
-    throw error;
+    const rows = db.getAllSync('SELECT data FROM template_packs ORDER BY updated_at DESC') as any[];
+    return rows.map(row => safeJSONParse<TemplatePack>(row.data, { id: '', name: '', description: '', genre: [] }, 'templatePack'));
+  } catch (e) {
+    return [];
   }
 };
 
@@ -1898,4 +2048,20 @@ export const listCustomBubbles = async (projectId: string): Promise<CustomBubble
     console.error('Error listing custom bubbles:', error);
     return [];
   }
+};
+// ---- Broadcast stubs (v4: broadcast data stored on project) ----
+
+export const getBroadcastData = async (projectId: string): Promise<{ coverUrl?: string; shortDesc?: string; tags?: string[]; queue: string[] } | null> => {
+  const project = await getProject(projectId);
+  if (!project) return null;
+  return project.broadcast ?? { queue: [] };
+};
+
+export const updateBroadcastData = async (projectId: string, data: Partial<{ coverUrl: string; shortDesc: string; tags: string[]; queue: string[]; onAirSnapshot: unknown; pricing: string }>): Promise<void> => {
+  // No-op stub — broadcast data not yet persisted in v4 schema
+  console.log('[updateBroadcastData] stub called with', { projectId, data });
+};
+
+export const addChapterToBroadcastQueue = async (projectId: string, chapterId: string): Promise<void> => {
+  console.log('[addChapterToBroadcastQueue] stub called with', { projectId, chapterId });
 };

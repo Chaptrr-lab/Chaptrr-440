@@ -109,18 +109,19 @@ export default function PublicProjectScreen() {
   
   // Merge stored chapters with project, only show published chapters
   const publishedStoredChapters = storedChapters.filter(ch => ch.status === 'PUBLISHED');
-  
+
   const publicProject = project ? {
     ...project,
-    chapters: publishedStoredChapters.length > 0 
+    chapters: publishedStoredChapters.length > 0
       ? publishedStoredChapters.map((ch, index): ProjectChapter => ({
           id: ch.id,
           title: ch.title,
           order: index + 1,
           projectId: ch.projectId,
-          blocks: ch.blocks,
+          scenes: [{ id: 'default', order: 0, blocks: ch.blocks }],
+          live: ch.status === 'PUBLISHED',
+          editedSinceLive: false,
           readTime: Math.max(1, Math.floor(ch.blocks.length * 0.5)),
-          status: ch.status === 'PUBLISHED' ? 'published' : 'draft',
           version: 1,
           createdAt: new Date(ch.updatedAt).toISOString(),
           updatedAt: new Date(ch.updatedAt).toISOString(),
@@ -128,7 +129,7 @@ export default function PublicProjectScreen() {
           globalSpacing: ch.globalSpacing,
           afterNote: ch.afterNote
         }))
-      : project.chapters.filter(chapter => chapter.status === 'published')
+      : project.chapters.filter(chapter => chapter.live)
   } : null;
 
   if (loading) {
@@ -360,7 +361,7 @@ export default function PublicProjectScreen() {
                 <View style={styles.chapterInfo}>
                   <Text style={styles.chapterTitle}>{chapter.title}</Text>
                   <Text style={styles.chapterMeta}>
-                    {chapter.readTime}m read • {chapter.blocks.length} panels
+                    {chapter.readTime}m read • {chapter.scenes.reduce((n, s) => n + s.blocks.length, 0)} panels
                   </Text>
                 </View>
                 <Play size={16} color="#6366f1" />

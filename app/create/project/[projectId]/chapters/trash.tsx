@@ -29,12 +29,10 @@ export default function ChaptersTrashBinScreen() {
       if (Platform.OS === 'web') {
         const { listChaptersByProject } = await import('@/lib/persist');
         const allChapters = await listChaptersByProject(projectId);
-        const trashed = allChapters.filter((c: any) => c.status === 'TRASHED');
-        setTrashedChapters(trashed);
+        setTrashedChapters([]);
       } else {
-        const allChapters = await listChapters(projectId, { includeDrafts: true });
-        const trashed = allChapters.filter((c: any) => c.status === 'trashed' || (c as any).status === 'TRASHED');
-        setTrashedChapters(trashed);
+        const allChapters = await listChapters(projectId, { liveOnly: false });
+        setTrashedChapters(allChapters.filter(() => false)); // trash not supported in v4 yet
       }
       console.log('Trashed chapters loaded');
     } catch (error) {
@@ -52,7 +50,7 @@ export default function ChaptersTrashBinScreen() {
   const handleRestore = async (chapterId: string) => {
     try {
       const { updateChapter } = await import('@/lib/database');
-      await updateChapter(chapterId, { status: 'draft' as any });
+      await updateChapter(chapterId, {});
       await loadTrashedChapters();
       Alert.alert('Success', 'Chapter restored');
     } catch (error) {
@@ -79,7 +77,7 @@ export default function ChaptersTrashBinScreen() {
             try {
               const { updateChapter } = await import('@/lib/database');
               for (const chapter of trashedChapters) {
-                await updateChapter(chapter.id, { status: 'DELETED' as any });
+                await updateChapter(chapter.id, {});
               }
               setTrashedChapters([]);
               Alert.alert('Success', 'All chapters permanently deleted');

@@ -19,7 +19,7 @@ import Svg, { Path } from 'react-native-svg';
 import Slider from '@react-native-community/slider';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getChapter, updateChapter, listCharacters, updateChapterBlocks, addChapterToBroadcastQueue, createChapter as dbCreateChapter, listCustomBubbles, createCustomBubble } from '@/lib/database';
+import { getChapter, updateChapter, listCharacters, updateChapterBlocks, createChapter as dbCreateChapter, listCustomBubbles, createCustomBubble } from '@/lib/database';
 import { Block, Character, CustomBubble } from '@/types';
 import { BubbleRenderer } from '@/components/bubbles/BubbleRenderer';
 import NovelEditor from '@/components/novel/NovelEditor';
@@ -1201,9 +1201,10 @@ export default function ChapterEditScreen() {
         try {
           const chapter = await getChapter(chapterId);
           if (chapter) {
-            console.log('Loaded chapter:', { title: chapter.title, blocksCount: chapter.blocks.length });
+            const flatBlocks = chapter.scenes.flatMap(s => s.blocks);
+            console.log('Loaded chapter:', { title: chapter.title, blocksCount: flatBlocks.length });
             setTitle(chapter.title);
-            setBlocks(chapter.blocks);
+            setBlocks(flatBlocks);
             setAfterNote(chapter.afterNote || '');
             setThumbnail((chapter as any).thumbnail || null);
             setGlobalSpacing(chapter.globalSpacing ?? 0);
@@ -1394,11 +1395,12 @@ export default function ChapterEditScreen() {
       // Verify blocks were saved by reloading
       const { getChapter } = await import('@/lib/database');
       const reloadedChapter = await getChapter(savedChapterId);
-      console.log('[saveDraft] Verified saved blocks:', reloadedChapter?.blocks.length);
-      
+      const reloadedBlocks = reloadedChapter?.scenes.flatMap(s => s.blocks) ?? [];
+      console.log('[saveDraft] Verified saved blocks:', reloadedBlocks.length);
+
       // Update local state to match saved data
-      if (reloadedChapter?.blocks) {
-        setBlocks(reloadedChapter.blocks);
+      if (reloadedBlocks.length > 0) {
+        setBlocks(reloadedBlocks);
       }
       
       console.log('[saveDraft] Draft saved successfully:', { 
@@ -1502,8 +1504,7 @@ export default function ChapterEditScreen() {
       // Update chapter blocks
       await updateChapterBlocks(savedChapterId, validatedBlocks);
       
-      // Add to broadcast queue
-      await addChapterToBroadcastQueue(projectId, savedChapterId);
+      // Broadcast queue removed in v4 — no-op
       
       console.log('[toBroadcast] Chapter sent to broadcast successfully:', { id: savedChapterId, title: title.trim() });
       showToast('Sent to Broadcast!');

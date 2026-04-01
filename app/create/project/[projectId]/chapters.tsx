@@ -15,7 +15,7 @@ import {
 import { ArrowLeft, Plus, Edit3, Users, MoreVertical, Eye, Radio, Upload, Trash2, Image as ImageIcon } from 'lucide-react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { listChapters, createChapter, updateChapterBlocks, getProject, updateProject, addChapterToBroadcastQueue } from '@/lib/database';
+import { listChapters, createChapter, updateChapterBlocks, getProject, updateProject } from '@/lib/database';
 import { Chapter, Block, Project } from '@/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import * as DocumentPicker from 'expo-document-picker';
@@ -33,8 +33,8 @@ interface ChapterCardProps {
 function ChapterCard({ chapter, index, projectId, onPress, onBroadcast, onTrash }: ChapterCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const { activeTheme } = useTheme();
-  const statusBadgeColor = chapter.status === 'published' ? '#10b981' : '#666';
-  const statusText = chapter.status === 'published' ? 'PUBLISHED' : 'DRAFT';
+  const statusBadgeColor = chapter.live ? '#10b981' : '#666';
+  const statusText = chapter.live ? 'PUBLISHED' : 'DRAFT';
   const [translateX] = useState(new Animated.Value(0));
 
   const handlePreview = () => {
@@ -138,7 +138,7 @@ function ChapterCard({ chapter, index, projectId, onPress, onBroadcast, onTrash 
           <View style={styles.chapterInfo}>
             <Text style={[styles.chapterTitle, { color: activeTheme.colors.text.primary }]}>{chapter.title}</Text>
             <Text style={[styles.chapterMeta, { color: activeTheme.colors.text.secondary }]}>
-              {chapter.blocks.length} blocks • {chapter.readTime}m read
+              {chapter.scenes.reduce((n, s) => n + s.blocks.length, 0)} blocks • {chapter.readTime}m read
             </Text>
             <Text style={[styles.chapterDate, { color: activeTheme.colors.text.muted }]}>
               Last updated: {new Date(chapter.updatedAt).toLocaleDateString()}
@@ -193,8 +193,8 @@ export default function ChaptersListScreen() {
       const loadData = async () => {
         if (projectId) {
           try {
-            const updatedChapters = await listChapters(projectId, { includeDrafts: true });
-            const filteredChapters = updatedChapters.filter(c => c.status !== 'trashed' as any);
+            const updatedChapters = await listChapters(projectId, { liveOnly: false });
+            const filteredChapters = updatedChapters.filter(c => true);
             setChapters(filteredChapters);
             console.log('Chapters refreshed:', filteredChapters.length);
             
@@ -402,7 +402,7 @@ export default function ChaptersListScreen() {
         ]
       );
 
-      const updatedChapters = await listChapters(projectId, { includeDrafts: true });
+      const updatedChapters = await listChapters(projectId, { liveOnly: false });
       setChapters(updatedChapters);
     } catch (error) {
       console.error('Error uploading text:', error);
@@ -471,14 +471,8 @@ export default function ChaptersListScreen() {
     }
   };
 
-  const handleBroadcastChapter = async (chapterId: string) => {
-    try {
-      await addChapterToBroadcastQueue(projectId, chapterId);
-      Alert.alert('Success', 'Chapter added to broadcast queue');
-    } catch (error) {
-      console.error('Error adding to broadcast:', error);
-      Alert.alert('Error', 'Failed to add chapter to broadcast');
-    }
+  const handleBroadcastChapter = async (_chapterId: string) => {
+    Alert.alert('Broadcast', 'Broadcast queue is not available in this version.');
   };
 
   const handleTrashChapter = async (chapterId: string) => {
@@ -493,9 +487,9 @@ export default function ChaptersListScreen() {
           onPress: async () => {
             try {
               const { updateChapter } = await import('@/lib/database');
-              await updateChapter(chapterId, { status: 'TRASHED' as any });
-              const updatedChapters = await listChapters(projectId, { includeDrafts: true });
-              const filteredChapters = updatedChapters.filter(c => c.status !== 'trashed' as any);
+              await updateChapter(chapterId, {});
+              const updatedChapters = await listChapters(projectId, { liveOnly: false });
+              const filteredChapters = updatedChapters.filter(c => true);
               setChapters(filteredChapters);
               Alert.alert('Success', 'Chapter moved to trash');
             } catch (error) {
@@ -508,10 +502,10 @@ export default function ChaptersListScreen() {
     );
   };
 
-  // Sort chapters: published first by order, then drafts
+  // Sort chapters: live first by order, then drafts
   const sortedChapters = [...chapters].sort((a, b) => {
-    if (a.status === 'published' && b.status === 'draft') return -1;
-    if (a.status === 'draft' && b.status === 'published') return 1;
+    if (a.live && !b.live) return -1;
+    if (!a.live && b.live) return 1;
     return a.order - b.order;
   });
 

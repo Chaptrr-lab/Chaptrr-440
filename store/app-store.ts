@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { combine } from 'zustand/middleware';
-import { Project, FeedPost, Creator } from '@/types';
+import { Project, FeedPost, Creator, Scene } from '@/types';
 
 const initialState = {
   projects: [] as Project[],
@@ -8,6 +8,7 @@ const initialState = {
   creators: [] as Creator[],
   currentProject: null as Project | null,
   currentChapterIndex: 0,
+  currentScene: null as Scene | null,
   likedProjects: new Set<string>(),
 };
 
@@ -17,8 +18,11 @@ export const useAppStore = create(
       set({ projects });
     },
     setFeedPosts: (feedPosts: FeedPost[]) => set({ feedPosts }),
-    setCurrentProject: (currentProject: Project | null) => set({ currentProject, currentChapterIndex: 0 }),
-    setCurrentChapterIndex: (currentChapterIndex: number) => set({ currentChapterIndex }),
+    setCurrentProject: (currentProject: Project | null) =>
+      set({ currentProject, currentChapterIndex: 0, currentScene: null }),
+    setCurrentChapterIndex: (currentChapterIndex: number) =>
+      set({ currentChapterIndex, currentScene: null }),
+    setCurrentScene: (currentScene: Scene | null) => set({ currentScene }),
     
     toggleLike: (projectId: string) => set((state) => {
     const newLikedProjects = new Set(state.likedProjects);
