@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
+  Platform,
 } from 'react-native';
 import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -21,8 +22,6 @@ export default function StoriesTrashBinScreen() {
 
   const loadTrashedStories = useCallback(async () => {
     try {
-      const { Platform } = await import('react-native');
-      
       if (Platform.OS === 'web') {
         const AsyncStorage = (await import('@/lib/async-storage')).default;
         const data = await AsyncStorage.getItem('chaptrr_projects');

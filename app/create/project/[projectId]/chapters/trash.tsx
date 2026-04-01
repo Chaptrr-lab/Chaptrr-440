@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
+  Platform,
 } from 'react-native';
 import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -24,8 +25,6 @@ export default function ChaptersTrashBinScreen() {
     if (!projectId) return;
     
     try {
-      const { Platform } = await import('react-native');
-      
       if (Platform.OS === 'web') {
         const { listChaptersByProject } = await import('@/lib/persist');
         const allChapters = await listChaptersByProject(projectId);
