@@ -21,6 +21,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import * as ImagePicker from 'expo-image-picker';
 import { listCustomBubbles, createCustomBubble, updateCustomBubble, deleteCustomBubble } from '@/lib/database';
 import { CustomBubble } from '@/types';
+import { goBackOrFallback } from '@/lib/navigation';
 
 export default function BubbleEditorScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -53,7 +54,7 @@ export default function BubbleEditorScreen() {
   }, [projectId]);
 
   useEffect(() => {
-    loadBubbles();
+    void loadBubbles();
   }, [loadBubbles]);
 
 
@@ -104,7 +105,7 @@ export default function BubbleEditorScreen() {
       }
       
       setEditorVisible(false);
-      loadBubbles();
+      void loadBubbles();
       
       if (Platform.OS === 'android') {
         const { ToastAndroid } = require('react-native');
@@ -128,7 +129,7 @@ export default function BubbleEditorScreen() {
           onPress: async () => {
             try {
               await deleteCustomBubble(bubble.id);
-              loadBubbles();
+              void loadBubbles();
               if (Platform.OS === 'android') {
                 const { ToastAndroid } = require('react-native');
                 ToastAndroid.show('Bubble deleted', ToastAndroid.SHORT);
@@ -179,7 +180,7 @@ export default function BubbleEditorScreen() {
       <StatusBar barStyle={activeTheme.colors.background === '#000000' ? 'light-content' : 'dark-content'} />
       
       <View style={[styles.header, { borderBottomColor: activeTheme.colors.border }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/')}>
           <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: activeTheme.colors.text.primary }]}>Custom Bubbles</Text>

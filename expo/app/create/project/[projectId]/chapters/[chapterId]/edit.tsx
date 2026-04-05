@@ -28,6 +28,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { parseTXT, parseDOCX, ParsedChapter } from '@/lib/upload-parser';
+import { goBackOrFallback } from '@/lib/navigation';
 
 interface BubbleTypePickerProps {
   visible: boolean;
@@ -1516,7 +1517,7 @@ export default function ChapterEditScreen() {
       
       // Navigate back to chapters list after a short delay
       setTimeout(() => {
-        router.back();
+        goBackOrFallback(router, '/');
       }, 1500);
     } catch (error) {
       console.warn('[toBroadcast]', error);
@@ -1731,13 +1732,13 @@ export default function ChapterEditScreen() {
         'Unsaved Changes',
         'You have unsaved changes. Do you want to save them before leaving?',
         [
-          { text: 'Discard', style: 'destructive', onPress: () => router.back() },
+          { text: 'Discard', style: 'destructive', onPress: () => goBackOrFallback(router, '/') },
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Save Draft & Exit', onPress: () => { void handleSaveDraft(); router.back(); } }
+          { text: 'Save Draft & Exit', onPress: () => { void handleSaveDraft(); goBackOrFallback(router, '/'); } }
         ]
       );
     } else {
-      router.back();
+      goBackOrFallback(router, '/');
     }
   };
 

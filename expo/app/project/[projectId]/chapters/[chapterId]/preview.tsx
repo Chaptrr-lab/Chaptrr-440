@@ -18,8 +18,7 @@ import { getChapter, getProject, listCharacters } from '@/lib/database';
 import { listChaptersByProject } from '@/lib/persist';
 import { isProjectAuthor } from '@/lib/auth';
 import { Character, Chapter, Project } from '@/types';
-
-
+import { goBackOrFallback } from '@/lib/navigation';
 
 export default function ChapterPreviewScreen() {
   const { projectId, chapterId } = useLocalSearchParams<{ 
@@ -126,7 +125,7 @@ export default function ChapterPreviewScreen() {
       }
     };
 
-    loadData();
+    void loadData();
   }, [projectId, chapterId]);
 
   const handleScroll = (event: any) => {
@@ -154,7 +153,7 @@ export default function ChapterPreviewScreen() {
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Preview not available</Text>
           <Text style={styles.errorSubtext}>Only the author can preview unpublished chapters</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/')}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -167,7 +166,7 @@ export default function ChapterPreviewScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Chapter not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => goBackOrFallback(router, '/')}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -187,7 +186,7 @@ export default function ChapterPreviewScreen() {
       </View>
       
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.headerButton} onPress={() => goBackOrFallback(router, '/')}>
           <ArrowLeft size={24} color="#fff" />
         </TouchableOpacity>
         
@@ -256,7 +255,7 @@ export default function ChapterPreviewScreen() {
           <Text style={styles.previewFooterText}>
             This is how your chapter will appear to readers when published.
           </Text>
-          <TouchableOpacity style={styles.backToEditorButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backToEditorButton} onPress={() => goBackOrFallback(router, '/')}>
             <Text style={styles.backToEditorButtonText}>Back to Editor</Text>
           </TouchableOpacity>
         </View>

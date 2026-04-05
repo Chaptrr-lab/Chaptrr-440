@@ -1,5 +1,6 @@
 import { View, Text, Button } from 'react-native';
 import { useRouter } from 'expo-router';
+import { goBackOrFallback } from '@/lib/navigation';
 
 export default function ModalScreen() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function ModalScreen() {
         This is a modal screen. You can add more content here later.
       </Text>
 
-      <Button title="Close" onPress={() => router.back()} />
+      <Button title="Close" onPress={() => goBackOrFallback(router, '/')} />
     </View>
   );
 }
