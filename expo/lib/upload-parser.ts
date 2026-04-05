@@ -1,4 +1,6 @@
 import { Block } from '@/types';
+import { XMLParser } from 'fast-xml-parser';
+import JSZip from 'jszip';
 
 export interface ParsedChapter {
   title: string;
@@ -133,9 +135,6 @@ export async function parseTXT(fileUri: string): Promise<ParsedChapter[]> {
 
 export async function parseDOCX(fileUri: string): Promise<ParsedChapter[]> {
   try {
-    const JSZip = (await import('jszip')).default;
-    const { XMLParser } = await import('fast-xml-parser');
-    
     let arrayBuffer: ArrayBuffer;
     
     if (fileUri.startsWith('data:')) {
