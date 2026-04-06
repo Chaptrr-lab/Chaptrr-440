@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   FlatList,
+  Dimensions,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +16,44 @@ import SafeImage from '@/ui/SafeImage';
 import { ArrowLeft, UserPlus, UserCheck } from 'lucide-react-native';
 import { Creator, Project } from '@/types';
 import { mockCreators } from '@/data/mock-data';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const GRID_GAP = 12;
+const GRID_H_PAD = 20;
+const CARD_WIDTH = (SCREEN_WIDTH - GRID_H_PAD * 2 - GRID_GAP) / 2;
+const CARD_COVER_HEIGHT = CARD_WIDTH * (4 / 3);
+
+function GridCard({ project, onPress }: { project: Project; onPress: () => void }) {
+  const { activeTheme } = useTheme();
+  return (
+    <TouchableOpacity style={styles.gridCard} onPress={onPress} activeOpacity={0.8}>
+      <SafeImage
+        uri={project.cover}
+        style={{ width: CARD_WIDTH, height: CARD_COVER_HEIGHT, borderRadius: 10, marginBottom: 8, overflow: 'hidden' } as any}
+        resizeMode="cover"
+        fallback={
+          <View
+            style={{ width: CARD_WIDTH, height: CARD_COVER_HEIGHT, borderRadius: 10, marginBottom: 8, backgroundColor: '#333' }}
+          />
+        }
+      />
+      <Text
+        style={[styles.gridTitle, { color: activeTheme.colors.text.primary }]}
+        numberOfLines={2}
+      >
+        {project.title}
+      </Text>
+      <View style={styles.gridStats}>
+        <Text style={[styles.gridStat, { color: activeTheme.colors.text.muted }]}>
+          {project.stats.views.toLocaleString()} views
+        </Text>
+        <Text style={[styles.gridStat, { color: activeTheme.colors.text.muted }]}>
+          {project.chapters.length} ch.
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function AuthorProfileScreen() {
   const { authorId } = useLocalSearchParams<{ authorId: string }>();
@@ -27,156 +66,122 @@ export default function AuthorProfileScreen() {
 
   useEffect(() => {
     if (!authorId) return;
-    
-    const foundAuthor = mockCreators.find(c => c.id === authorId);
+    const foundAuthor = mockCreators.find((c) => c.id === authorId);
     setAuthor(foundAuthor || null);
-    
-    const authorWorks = projects.filter(p => p.creatorId === authorId);
-    setAuthorProjects(authorWorks);
+    setAuthorProjects(projects.filter((p) => p.creatorId === authorId));
   }, [authorId, projects]);
-
-  const handleFollowToggle = () => {
-    setIsFollowing(!isFollowing);
-  };
 
   const handleProjectPress = (project: Project) => {
     setCurrentProject(project);
     router.push(`/project/${project.id}`);
   };
 
+  const c = activeTheme.colors;
+
   if (!author) {
     return (
-      <View style={[styles.container, { backgroundColor: activeTheme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: c.background }]}>
         <Stack.Screen
           options={{
             title: 'Author Profile',
-            headerStyle: { backgroundColor: activeTheme.colors.background },
-            headerTintColor: activeTheme.colors.text.primary,
-            headerTitleStyle: { fontWeight: '700' },
+            headerStyle: { backgroundColor: c.background },
+            headerTintColor: c.text.primary,
             headerLeft: () => (
               <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
+                <ArrowLeft size={24} color={c.text.primary} />
               </TouchableOpacity>
             ),
           }}
         />
         <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: activeTheme.colors.text.secondary }]}>
-            Author not found
-          </Text>
+          <Text style={[styles.errorText, { color: c.text.secondary }]}>Author not found</Text>
         </View>
       </View>
     );
   }
 
-  const renderProjectCard = ({ item }: { item: Project }) => (
-    <TouchableOpacity
-      style={[styles.projectCard, { backgroundColor: activeTheme.colors.card }]}
-      onPress={() => handleProjectPress(item)}
-    >
-      <SafeImage
-        uri={item.cover}
-        style={styles.projectCover}
-        resizeMode="cover"
-        fallback={<View style={[styles.projectCover, { backgroundColor: '#333' }]} />}
-      />
-      <View style={styles.projectInfo}>
-        <Text style={[styles.projectTitle, { color: activeTheme.colors.text.primary }]} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={[styles.projectDescription, { color: activeTheme.colors.text.secondary }]} numberOfLines={2}>
-          {item.shortDescription || item.description}
-        </Text>
-        <View style={styles.projectStats}>
-          <Text style={[styles.statText, { color: activeTheme.colors.text.muted }]}>
-            {item.stats.views.toLocaleString()} views
-          </Text>
-          <Text style={[styles.statText, { color: activeTheme.colors.text.muted }]}>
-            {item.chapters.length} chapters
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
   return (
-    <View style={[styles.container, { backgroundColor: activeTheme.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: c.background }]}>
       <Stack.Screen
         options={{
           title: '',
-          headerStyle: { backgroundColor: activeTheme.colors.background },
-          headerTintColor: activeTheme.colors.text.primary,
-          headerTitleStyle: { fontWeight: '700' },
+          headerStyle: { backgroundColor: c.background },
+          headerTintColor: c.text.primary,
           headerLeft: () => (
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <ArrowLeft size={24} color={activeTheme.colors.text.primary} />
+              <ArrowLeft size={24} color={c.text.primary} />
             </TouchableOpacity>
           ),
         }}
       />
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Author Header */}
-        <View style={styles.authorHeader}>
+        {/* Author header */}
+        <View style={[styles.authorHeader, { paddingTop: insets.top > 0 ? 8 : 24 }]}>
           <SafeImage
             uri={author.avatar}
             style={styles.authorAvatar}
             resizeMode="cover"
             fallback={<View style={[styles.authorAvatar, { backgroundColor: '#666' }]} />}
           />
-          <Text style={[styles.authorName, { color: activeTheme.colors.text.primary }]}>
-            {author.name}
-          </Text>
-          <Text style={[styles.followersCount, { color: activeTheme.colors.text.secondary }]}>
+          <Text style={[styles.authorName, { color: c.text.primary }]}>{author.name}</Text>
+          <Text style={[styles.followersCount, { color: c.text.secondary }]}>
             {author.followers.toLocaleString()} followers
           </Text>
 
+          {/* Bio */}
+          {author.bio ? (
+            <Text style={[styles.bio, { color: c.text.secondary }]}>{author.bio}</Text>
+          ) : null}
+
+          {/* Follow button */}
           <TouchableOpacity
             style={[
               styles.followButton,
               isFollowing
-                ? { backgroundColor: activeTheme.colors.card, borderWidth: 1, borderColor: activeTheme.colors.accent }
-                : { backgroundColor: activeTheme.colors.accent }
+                ? { backgroundColor: c.surface, borderWidth: 1, borderColor: c.accent }
+                : { backgroundColor: c.accent },
             ]}
-            onPress={handleFollowToggle}
+            onPress={() => setIsFollowing((v) => !v)}
+            activeOpacity={0.8}
           >
             {isFollowing ? (
               <>
-                <UserCheck size={20} color={activeTheme.colors.accent} />
-                <Text style={[styles.followButtonText, { color: activeTheme.colors.accent }]}>
-                  Following
-                </Text>
+                <UserCheck size={18} color={c.accent} />
+                <Text style={[styles.followButtonText, { color: c.accent }]}>Following</Text>
               </>
             ) : (
               <>
-                <UserPlus size={20} color={activeTheme.colors.background} />
-                <Text style={[styles.followButtonText, { color: activeTheme.colors.background }]}>
-                  Follow
-                </Text>
+                <UserPlus size={18} color={c.background} />
+                <Text style={[styles.followButtonText, { color: c.background }]}>Follow</Text>
               </>
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Author's Works */}
+        {/* Works section — 2-column grid */}
         <View style={styles.worksSection}>
-          <Text style={[styles.sectionTitle, { color: activeTheme.colors.text.primary }]}>
+          <Text style={[styles.sectionTitle, { color: c.text.primary }]}>
             Works ({authorProjects.length})
           </Text>
-          
+
           {authorProjects.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={[styles.emptyText, { color: activeTheme.colors.text.secondary }]}>
+              <Text style={[styles.emptyText, { color: c.text.secondary }]}>
                 No published works yet
               </Text>
             </View>
           ) : (
             <FlatList
               data={authorProjects}
-              renderItem={renderProjectCard}
               keyExtractor={(item) => item.id}
+              numColumns={2}
               scrollEnabled={false}
-              contentContainerStyle={styles.projectsList}
+              columnWrapperStyle={styles.gridRow}
+              contentContainerStyle={styles.gridContent}
+              renderItem={({ item }) => (
+                <GridCard project={item} onPress={() => handleProjectPress(item)} />
+              )}
             />
           )}
         </View>
@@ -186,100 +191,88 @@ export default function AuthorProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  container: { flex: 1 },
+  backButton: { padding: 8, marginLeft: -8 },
+  scrollView: { flex: 1 },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { fontSize: 16, fontWeight: '600' },
+  // Author header
   authorHeader: {
     alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 28,
   },
   authorAvatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 16,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    marginBottom: 14,
   },
   authorName: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   followersCount: {
-    fontSize: 16,
+    fontSize: 15,
+    marginBottom: 12,
+  },
+  bio: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    maxWidth: 300,
     marginBottom: 20,
   },
   followButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 11,
     borderRadius: 24,
     gap: 8,
   },
   followButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
+  // Works grid
   worksSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingHorizontal: GRID_H_PAD,
+    paddingBottom: 48,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     marginBottom: 16,
   },
-  projectsList: {
-    gap: 16,
+  gridContent: {
+    gap: GRID_GAP,
   },
-  projectCard: {
-    flexDirection: 'row',
-    borderRadius: 12,
+  gridRow: {
+    gap: GRID_GAP,
+    justifyContent: 'flex-start',
+  },
+  gridCard: {
+    width: CARD_WIDTH,
+  },
+  gridCover: {
+    borderRadius: 10,
+    marginBottom: 8,
     overflow: 'hidden',
-    marginBottom: 16,
   },
-  projectCover: {
-    width: 100,
-    height: 140,
-  },
-  projectInfo: {
-    flex: 1,
-    padding: 12,
-    justifyContent: 'space-between',
-  },
-  projectTitle: {
-    fontSize: 16,
+  gridTitle: {
+    fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
     marginBottom: 4,
   },
-  projectDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  projectStats: {
+  gridStats: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 8,
   },
-  statText: {
-    fontSize: 12,
+  gridStat: {
+    fontSize: 11,
   },
   emptyState: {
     alignItems: 'center',

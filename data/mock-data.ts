@@ -8,30 +8,35 @@ export const mockCreators: Creator[] = [
     name: 'Sarah Chen',
     avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
     followers: 12500,
+    bio: 'Weaving worlds from quiet moments. Fantasy & slice-of-life. Posting new chapters every Tuesday.',
   },
   {
     id: '2',
     name: 'Marcus Rivera',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
     followers: 8900,
+    bio: 'Thriller writer with a soft spot for morally grey heroes. Coffee, deadlines, and dark cities.',
   },
   {
     id: '3',
     name: 'Luna Park',
     avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
     followers: 15200,
+    bio: 'Romance & drama. I write the stories I wish existed. Top creator 3 months running ✨',
   },
   {
     id: '4',
     name: 'Alex Thompson',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
     followers: 6700,
+    bio: 'Sci-fi & action. Former aerospace engineer turned storyteller. Hard science, bigger feelings.',
   },
   {
     id: '5',
     name: 'Maya Patel',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
     followers: 9800,
+    bio: 'Horror & mystery. I believe every shadow has a story. Reader messages fuel my chapters.',
   },
 ];
 

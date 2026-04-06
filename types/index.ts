@@ -7,6 +7,7 @@ export interface Creator {
   name: string;
   avatar: string;
   followers: number;
+  bio?: string;
 }
 
 export interface Character {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, memo } from 'react';
+import React, { useEffect, useState, useCallback, memo, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   FlatList,
+  Modal,
+  Animated,
+  Platform,
 } from 'react-native';
 import SafeImage from '@/ui/SafeImage';
-import { BookOpen, ChevronRight } from 'lucide-react-native';
+import { BookOpen, ChevronRight, Bookmark, CheckCircle, XCircle, Trash2 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app-store';
@@ -20,12 +23,20 @@ type Shelf = 'reading' | 'want-to-read' | 'finished' | 'dropped';
 interface ShelfCardProps {
   project: Project;
   shelf: Shelf;
-  progress?: number; // 0-1
+  progress?: number;
   onPress: () => void;
   onContinue?: () => void;
+  onLongPress: () => void;
 }
 
-const ShelfCard = memo(function ShelfCard({ project, shelf, progress = 0, onPress, onContinue }: ShelfCardProps) {
+const ShelfCard = memo(function ShelfCard({
+  project,
+  shelf,
+  progress = 0,
+  onPress,
+  onContinue,
+  onLongPress,
+}: ShelfCardProps) {
   const { activeTheme } = useTheme();
   const completedChapters = Math.round(progress * (project.chapters.length || 1));
 
@@ -33,6 +44,8 @@ const ShelfCard = memo(function ShelfCard({ project, shelf, progress = 0, onPres
     <TouchableOpacity
       style={[styles.shelfCard, { backgroundColor: activeTheme.colors.card }]}
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={350}
       activeOpacity={0.85}
     >
       <SafeImage
@@ -42,16 +55,21 @@ const ShelfCard = memo(function ShelfCard({ project, shelf, progress = 0, onPres
         fallback={<View style={[styles.shelfCover, { backgroundColor: '#333' }]} />}
       />
       <View style={styles.shelfCardInfo}>
-        <Text style={[styles.shelfCardTitle, { color: activeTheme.colors.text.primary }]} numberOfLines={2}>
+        <Text
+          style={[styles.shelfCardTitle, { color: activeTheme.colors.text.primary }]}
+          numberOfLines={2}
+        >
           {project.title}
         </Text>
-        <Text style={[styles.shelfCardAuthor, { color: activeTheme.colors.text.secondary }]} numberOfLines={1}>
+        <Text
+          style={[styles.shelfCardAuthor, { color: activeTheme.colors.text.secondary }]}
+          numberOfLines={1}
+        >
           {project.creator.name}
         </Text>
 
         {shelf === 'reading' && (
           <>
-            {/* Progress bar */}
             <View style={styles.progressBarContainer}>
               <View style={[styles.progressBarFill, { width: `${Math.round(progress * 100)}%` }]} />
             </View>
@@ -77,7 +95,13 @@ const ShelfCard = memo(function ShelfCard({ project, shelf, progress = 0, onPres
       </View>
 
       {shelf === 'reading' && onContinue && (
-        <TouchableOpacity style={styles.resumeBtn} onPress={(e) => { e.stopPropagation(); onContinue(); }}>
+        <TouchableOpacity
+          style={styles.resumeBtn}
+          onPress={(e) => {
+            e.stopPropagation();
+            onContinue();
+          }}
+        >
           <BookOpen size={14} color="#fff" />
           <Text style={styles.resumeBtnText}>Resume</Text>
         </TouchableOpacity>
@@ -86,6 +110,108 @@ const ShelfCard = memo(function ShelfCard({ project, shelf, progress = 0, onPres
   );
 });
 
+// ─── Long-press action sheet ────────────────────────────────────────────────
+interface ActionSheetAction {
+  label: string;
+  icon: React.ComponentType<any>;
+  color?: string;
+  onPress: () => void;
+}
+
+function ShelfActionSheet({
+  visible,
+  project,
+  currentShelf,
+  onClose,
+  onMove,
+  onRemove,
+}: {
+  visible: boolean;
+  project: Project | null;
+  currentShelf: Shelf;
+  onClose: () => void;
+  onMove: (shelf: Shelf) => void;
+  onRemove: () => void;
+}) {
+  const { activeTheme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const slideAnim = useRef(new Animated.Value(300)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 12,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: 300,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
+
+  if (!project) return null;
+
+  const ALL_MOVE_OPTIONS: { shelf: Shelf; label: string; icon: React.ComponentType<any>; color: string }[] = [
+    { shelf: 'want-to-read', label: 'Move to Want to Read', icon: Bookmark, color: '#818cf8' },
+    { shelf: 'finished', label: 'Move to Finished', icon: CheckCircle, color: '#10b981' },
+    { shelf: 'dropped', label: 'Move to Dropped', icon: XCircle, color: '#f59e0b' },
+  ];
+  const MOVE_OPTIONS = ALL_MOVE_OPTIONS.filter((o) => o.shelf !== currentShelf);
+
+  const c = activeTheme.colors;
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose} />
+      <Animated.View
+        style={[
+          styles.sheet,
+          { backgroundColor: c.surface, paddingBottom: insets.bottom + 8, transform: [{ translateY: slideAnim }] },
+        ]}
+      >
+        <View style={[styles.sheetHandle, { backgroundColor: c.border }]} />
+        <Text style={[styles.sheetProjectTitle, { color: c.text.primary }]} numberOfLines={1}>
+          {project.title}
+        </Text>
+
+        {MOVE_OPTIONS.map((opt) => {
+          const Icon = opt.icon;
+          return (
+            <TouchableOpacity
+              key={opt.shelf}
+              style={[styles.sheetRow, { borderColor: c.border }]}
+              onPress={() => { onMove(opt.shelf); onClose(); }}
+              activeOpacity={0.7}
+            >
+              <Icon size={20} color={opt.color} />
+              <Text style={[styles.sheetRowLabel, { color: c.text.primary }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+
+        <TouchableOpacity
+          style={[styles.sheetRow, styles.sheetRowDanger, { borderColor: c.border }]}
+          onPress={() => { onRemove(); onClose(); }}
+          activeOpacity={0.7}
+        >
+          <Trash2 size={20} color="#ef4444" />
+          <Text style={[styles.sheetRowLabel, { color: '#ef4444' }]}>Remove from Shelf</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.sheetCancel} onPress={onClose} activeOpacity={0.7}>
+          <Text style={[styles.sheetCancelText, { color: c.text.muted }]}>Cancel</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+// ─── Shelf tab config ────────────────────────────────────────────────────────
 const SHELF_TABS: { key: Shelf; label: string }[] = [
   { key: 'reading', label: 'Reading' },
   { key: 'want-to-read', label: 'Want to Read' },
@@ -93,30 +219,68 @@ const SHELF_TABS: { key: Shelf; label: string }[] = [
   { key: 'dropped', label: 'Dropped' },
 ];
 
+// ─── Main screen ─────────────────────────────────────────────────────────────
 export default function LibraryScreen() {
   const [activeShelf, setActiveShelf] = useState<Shelf>('reading');
   const insets = useSafeAreaInsets();
   const { projects, setCurrentProject, setCurrentChapterIndex } = useAppStore();
   const { activeTheme } = useTheme();
 
-  // Distribute mock projects across shelves for demo
-  const shelfProjects: Record<Shelf, Project[]> = {
-    'reading': projects.slice(0, 3),
-    'want-to-read': projects.slice(3, 6),
-    'finished': projects.slice(6, 8),
-    'dropped': projects.slice(8, 9),
-  };
+  // shelf state: project id → current shelf
+  const [shelfMap, setShelfMap] = useState<Record<string, Shelf>>(() => {
+    const map: Record<string, Shelf> = {};
+    projects.slice(0, 3).forEach((p) => { map[p.id] = 'reading'; });
+    projects.slice(3, 6).forEach((p) => { map[p.id] = 'want-to-read'; });
+    projects.slice(6, 8).forEach((p) => { map[p.id] = 'finished'; });
+    projects.slice(8, 9).forEach((p) => { map[p.id] = 'dropped'; });
+    return map;
+  });
 
-  // Mock progress for reading shelf
+  const shelfProjects = React.useMemo(() => {
+    const map: Record<Shelf, Project[]> = {
+      reading: [],
+      'want-to-read': [],
+      finished: [],
+      dropped: [],
+    };
+    Object.entries(shelfMap).forEach(([id, shelf]) => {
+      const project = projects.find((p) => p.id === id);
+      if (project) map[shelf].push(project);
+    });
+    return map;
+  }, [shelfMap, projects]);
+
   const mockProgress: Record<string, number> = {
     [projects[0]?.id]: 0.35,
     [projects[1]?.id]: 0.72,
     [projects[2]?.id]: 0.1,
   };
 
-  // The "in progress" story for Continue Reading banner
   const inProgressStory = shelfProjects['reading'][0];
   const inProgressProgress = inProgressStory ? (mockProgress[inProgressStory.id] ?? 0.35) : 0;
+
+  // Long-press sheet state
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [sheetVisible, setSheetVisible] = useState(false);
+
+  const handleLongPress = useCallback((project: Project) => {
+    setSelectedProject(project);
+    setSheetVisible(true);
+  }, []);
+
+  const handleMove = useCallback((shelf: Shelf) => {
+    if (!selectedProject) return;
+    setShelfMap((prev) => ({ ...prev, [selectedProject.id]: shelf }));
+  }, [selectedProject]);
+
+  const handleRemove = useCallback(() => {
+    if (!selectedProject) return;
+    setShelfMap((prev) => {
+      const next = { ...prev };
+      delete next[selectedProject.id];
+      return next;
+    });
+  }, [selectedProject]);
 
   const handleContinue = useCallback((project: Project) => {
     setCurrentProject(project);
@@ -172,20 +336,19 @@ export default function LibraryScreen() {
         style={styles.tabsScroll}
         contentContainerStyle={styles.tabsContent}
       >
-        {SHELF_TABS.map(tab => (
+        {SHELF_TABS.map((tab) => (
           <TouchableOpacity
             key={tab.key}
-            style={[
-              styles.tab,
-              activeShelf === tab.key && styles.tabActive,
-            ]}
+            style={[styles.tab, activeShelf === tab.key && styles.tabActive]}
             onPress={() => setActiveShelf(tab.key)}
           >
-            <Text style={[
-              styles.tabText,
-              { color: activeTheme.colors.text.secondary },
-              activeShelf === tab.key && styles.tabTextActive,
-            ]}>
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTheme.colors.text.secondary },
+                activeShelf === tab.key && styles.tabTextActive,
+              ]}
+            >
               {tab.label}
             </Text>
             {shelfProjects[tab.key].length > 0 && (
@@ -234,20 +397,29 @@ export default function LibraryScreen() {
               progress={mockProgress[item.id] ?? 0}
               onPress={() => handleProjectPress(item)}
               onContinue={activeShelf === 'reading' ? () => handleContinue(item) : undefined}
+              onLongPress={() => handleLongPress(item)}
             />
           )}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
         />
       )}
+
+      {/* Long-press action sheet */}
+      <ShelfActionSheet
+        visible={sheetVisible}
+        project={selectedProject}
+        currentShelf={selectedProject ? (shelfMap[selectedProject.id] ?? activeShelf) : activeShelf}
+        onClose={() => setSheetVisible(false)}
+        onMove={handleMove}
+        onRemove={handleRemove}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     paddingHorizontal: 20,
     paddingTop: 20,
@@ -269,15 +441,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(99,102,241,0.3)',
   },
-  bannerCover: {
-    width: 52,
-    height: 72,
-    borderRadius: 8,
-  },
-  bannerInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
+  bannerCover: { width: 52, height: 72, borderRadius: 8 },
+  bannerInfo: { flex: 1, marginLeft: 12 },
   bannerLabel: {
     color: '#6366f1',
     fontSize: 11,
@@ -286,40 +451,19 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     marginBottom: 3,
   },
-  bannerTitle: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
+  bannerTitle: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 8 },
   bannerProgressBarContainer: {
     height: 3,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 2,
     marginBottom: 4,
   },
-  bannerProgressBarFill: {
-    height: 3,
-    backgroundColor: '#6366f1',
-    borderRadius: 2,
-  },
-  bannerProgressText: {
-    color: '#888',
-    fontSize: 11,
-  },
-  bannerArrow: {
-    paddingLeft: 8,
-  },
-  // Shelf tabs
-  tabsScroll: {
-    flexGrow: 0,
-    marginBottom: 8,
-  },
-  tabsContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-    paddingBottom: 4,
-  },
+  bannerProgressBarFill: { height: 3, backgroundColor: '#6366f1', borderRadius: 2 },
+  bannerProgressText: { color: '#888', fontSize: 11 },
+  bannerArrow: { paddingLeft: 8 },
+  // Tabs
+  tabsScroll: { flexGrow: 0, marginBottom: 8 },
+  tabsContent: { paddingHorizontal: 16, gap: 8, paddingBottom: 4 },
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -334,14 +478,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(99,102,241,0.4)',
   },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  tabTextActive: {
-    color: '#6366f1',
-    fontWeight: '700',
-  },
+  tabText: { fontSize: 14, fontWeight: '500' },
+  tabTextActive: { color: '#6366f1', fontWeight: '700' },
   tabCount: {
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 10,
@@ -350,23 +488,11 @@ const styles = StyleSheet.create({
     minWidth: 20,
     alignItems: 'center',
   },
-  tabCountActive: {
-    backgroundColor: 'rgba(99,102,241,0.3)',
-  },
-  tabCountText: {
-    color: '#aaa',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  tabCountTextActive: {
-    color: '#6366f1',
-  },
+  tabCountActive: { backgroundColor: 'rgba(99,102,241,0.3)' },
+  tabCountText: { color: '#aaa', fontSize: 11, fontWeight: '600' },
+  tabCountTextActive: { color: '#6366f1' },
   // List
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-    gap: 10,
-  },
+  listContent: { paddingHorizontal: 16, paddingBottom: 32, gap: 10 },
   // Shelf card
   shelfCard: {
     flexDirection: 'row',
@@ -375,42 +501,19 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 12,
   },
-  shelfCover: {
-    width: 52,
-    height: 72,
-    borderRadius: 8,
-  },
-  shelfCardInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  shelfCardTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 20,
-  },
-  shelfCardAuthor: {
-    fontSize: 13,
-  },
+  shelfCover: { width: 52, height: 72, borderRadius: 8 },
+  shelfCardInfo: { flex: 1, gap: 4 },
+  shelfCardTitle: { fontSize: 15, fontWeight: '600', lineHeight: 20 },
+  shelfCardAuthor: { fontSize: 13 },
   progressBarContainer: {
     height: 3,
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 2,
     marginTop: 4,
   },
-  progressBarFill: {
-    height: 3,
-    backgroundColor: '#6366f1',
-    borderRadius: 2,
-  },
-  progressLabel: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  shelfTagLabel: {
-    fontSize: 12,
-    marginTop: 2,
-  },
+  progressBarFill: { height: 3, backgroundColor: '#6366f1', borderRadius: 2 },
+  progressLabel: { fontSize: 11, marginTop: 2 },
+  shelfTagLabel: { fontSize: 12, marginTop: 2 },
   resumeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -420,11 +523,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     gap: 5,
   },
-  resumeBtnText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
+  resumeBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   // Empty state
   emptyState: {
     flex: 1,
@@ -433,16 +532,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     gap: 8,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  emptyTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  emptySubtitle: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
   discoverBtn: {
     marginTop: 12,
     backgroundColor: '#6366f1',
@@ -450,9 +541,56 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
   },
-  discoverBtnText: {
-    color: '#fff',
+  discoverBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  // Action sheet
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  sheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sheetProjectTitle: {
     fontSize: 15,
     fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  sheetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    gap: 14,
+  },
+  sheetRowDanger: {
+    borderBottomWidth: 0,
+    marginTop: 4,
+  },
+  sheetRowLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  sheetCancel: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  sheetCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
