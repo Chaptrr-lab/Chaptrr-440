@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, PanResp
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { listProjects, createSampleProject, updateProject } from '@/lib/database';
+import { listProjects, updateProject } from '@/lib/database';
 import { Plus, Trash2, Radio } from 'lucide-react-native';
 
 interface StoryCardProps {
@@ -204,6 +204,7 @@ export default function StudioScreen() {
   const insets = useSafeAreaInsets();
   const [userProjects, setUserProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const quickStats = { readsToday: 0, subsThisWeek: 0, earnedThisWeek: 0 };
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -232,18 +233,8 @@ export default function StudioScreen() {
     router.push(`/studio/${projectId}/broadcast`);
   };
 
-  const handleCreateStory = async () => {
-    try {
-      const result = await createSampleProject();
-      console.log('Created new project:', result.id);
-      
-      const dbProjects = await listProjects();
-      setUserProjects(dbProjects);
-      
-      router.push(`/create/project/${result.id}/chapters`);
-    } catch (error) {
-      console.error('Error creating project:', error);
-    }
+  const handleCreateStory = () => {
+    router.push('/create' as any);
   };
 
   const handleStoryRowPress = (projectId: string) => {
@@ -375,6 +366,33 @@ export default function StudioScreen() {
       fontSize: 16,
       fontWeight: '600' as const,
     },
+    quickStatsRow: {
+      flexDirection: 'row' as const,
+      gap: 8,
+      marginBottom: 20,
+    },
+    quickStatCard: {
+      flex: 1,
+      backgroundColor: activeTheme.colors.surface,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: activeTheme.colors.border,
+      paddingVertical: 12,
+      alignItems: 'center' as const,
+    },
+    quickStatValue: {
+      fontSize: 20,
+      fontWeight: '700' as const,
+      color: activeTheme.colors.accent,
+      marginBottom: 2,
+    },
+    quickStatLabel: {
+      fontSize: 10,
+      color: activeTheme.colors.text.muted,
+      textTransform: 'uppercase' as const,
+      letterSpacing: 0.4,
+      textAlign: 'center' as const,
+    },
   });
 
   if (loading) {
@@ -402,6 +420,22 @@ export default function StudioScreen() {
           <TouchableOpacity style={styles.earningsButton} onPress={handleEarningsAnalytics}>
             <Text style={styles.earningsButtonText}>Earnings / Analytics</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Quick stats */}
+        <View style={styles.quickStatsRow}>
+          <View style={styles.quickStatCard}>
+            <Text style={styles.quickStatValue}>{quickStats.readsToday}</Text>
+            <Text style={styles.quickStatLabel}>Reads{'\n'}Today</Text>
+          </View>
+          <View style={styles.quickStatCard}>
+            <Text style={styles.quickStatValue}>{quickStats.subsThisWeek}</Text>
+            <Text style={styles.quickStatLabel}>Subs{'\n'}This Week</Text>
+          </View>
+          <View style={styles.quickStatCard}>
+            <Text style={styles.quickStatValue}>${quickStats.earnedThisWeek}</Text>
+            <Text style={styles.quickStatLabel}>Earned{'\n'}This Week</Text>
+          </View>
         </View>
 
         <View style={styles.sectionTitleRow}>

@@ -1402,6 +1402,50 @@ export const getProject = async (id: string): Promise<Project | null> => {
   }
 };
 
+export const createProject = async (data: {
+  title: string;
+  genres: string[];
+  shortDescription?: string;
+  coverUrl?: string;
+}): Promise<{ id: string }> => {
+  const id = `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const now = new Date().toISOString();
+
+  if (Platform.OS === 'web') {
+    const projects = await getWebData<any>(STORAGE_KEYS.PROJECTS);
+    projects.push({
+      id,
+      title: data.title,
+      cover_url: data.coverUrl || null,
+      tags: data.genres,
+      short_description: data.shortDescription || '',
+      long_description: [],
+      creator_id: '1',
+      updated_at: now,
+    });
+    await setWebData(STORAGE_KEYS.PROJECTS, projects);
+    return { id };
+  }
+
+  if (!db) throw new Error('Database not initialized');
+
+  db.runSync(
+    `INSERT INTO projects (id, title, cover_url, tags, short_description, long_description, creator_id, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      data.title,
+      data.coverUrl || null,
+      JSON.stringify(data.genres),
+      data.shortDescription || '',
+      JSON.stringify([]),
+      '1',
+      now,
+    ]
+  );
+  return { id };
+};
+
 export const createSampleProject = async (): Promise<{ id: string }> => {
   const id = `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const now = new Date().toISOString();
