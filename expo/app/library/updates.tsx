@@ -29,7 +29,8 @@ export default function UpdatesScreen() {
   const [updates, setUpdates] = useState<UpdateItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
-  const { projects, setCurrentProject } = useAppStore();
+  const projects = useAppStore((state) => state.projects);
+  const setCurrentProject = useAppStore((state) => state.setCurrentProject);
   const { activeTheme } = useTheme();
 
   const loadUpdates = useCallback(() => {

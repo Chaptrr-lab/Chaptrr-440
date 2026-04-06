@@ -77,7 +77,9 @@ export default function SearchScreen() {
     'art therapy'
   ]);
   const insets = useSafeAreaInsets();
-  const { projects, setCurrentProject, incrementViews } = useAppStore();
+  const projects = useAppStore((state) => state.projects);
+  const setCurrentProject = useAppStore((state) => state.setCurrentProject);
+  const incrementViews = useAppStore((state) => state.incrementViews);
 
   useEffect(() => {
     if (searchQuery.trim()) {

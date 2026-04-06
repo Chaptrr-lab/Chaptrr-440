@@ -31,7 +31,8 @@ export default function ShelfScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('subscribed');
   const [items, setItems] = useState<ShelfItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const { projects, setCurrentProject } = useAppStore();
+  const projects = useAppStore((state) => state.projects);
+  const setCurrentProject = useAppStore((state) => state.setCurrentProject);
   const { activeTheme } = useTheme();
 
   const loadItems = React.useCallback(async () => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, memo } from 'react';
+import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -167,17 +167,23 @@ export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const { activeTheme, mode, setMode } = useTheme();
   
-  const { 
-    setProjects, 
-    setFeedPosts: setStoreFeedPosts,
-    likedProjects, 
-    toggleLike, 
-    setCurrentProject,
-    incrementViews,
-    incrementOpens
-  } = useAppStore();
+  const setProjects = useAppStore((state) => state.setProjects);
+  const setStoreFeedPosts = useAppStore((state) => state.setFeedPosts);
+  const likedProjects = useAppStore((state) => state.likedProjects);
+  const toggleLike = useAppStore((state) => state.toggleLike);
+  const setCurrentProject = useAppStore((state) => state.setCurrentProject);
+  const incrementViews = useAppStore((state) => state.incrementViews);
+  const incrementOpens = useAppStore((state) => state.incrementOpens);
+  const hasLoadedInitialDataRef = useRef<boolean>(false);
 
   useEffect(() => {
+    if (hasLoadedInitialDataRef.current) {
+      console.log('[ExploreScreen] Initial data load skipped because it already ran');
+      return;
+    }
+
+    hasLoadedInitialDataRef.current = true;
+
     const loadInitialData = async () => {
       const posts = generateFeedPosts(mockProjects);
       setProjects(mockProjects);

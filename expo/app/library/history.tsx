@@ -9,7 +9,8 @@ import { ArrowLeft } from 'lucide-react-native';
 
 export default function ReadingHistoryScreen() {
   const { activeTheme } = useTheme();
-  const { projects, setCurrentProject } = useAppStore();
+  const projects = useAppStore((state) => state.projects);
+  const setCurrentProject = useAppStore((state) => state.setCurrentProject);
 
   const readingHistory = [
     { id: '1', project: projects[0], chapterTitle: 'The Breaking Point', timestamp: '2 hours ago' },

@@ -10,7 +10,7 @@ import { ArrowLeft } from 'lucide-react-native';
 export default function OnAirScreen() {
   const { activeTheme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { projects } = useAppStore();
+  const projects = useAppStore((state) => state.projects);
   const router = useRouter();
   const { projectId } = useLocalSearchParams<{ projectId?: string }>();
 

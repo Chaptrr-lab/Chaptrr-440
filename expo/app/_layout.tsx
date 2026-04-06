@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, View, Text, StatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { initializeDatabase, initializeSampleData, listProjects } from "@/lib/database";
@@ -10,7 +10,7 @@ import { ThemeProvider, useTheme } from "@/theme/ThemeProvider";
 import { useAppStore } from "@/store/app-store";
 import { mockProjects, generateFeedPosts } from "@/data/mock-data";
 
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
@@ -127,28 +127,33 @@ const styles = StyleSheet.create({
 });
 
 function AppInitializer({ children }: { children: React.ReactNode }) {
-  const { setProjects, setFeedPosts } = useAppStore();
-  const [isInitialized, setIsInitialized] = useState(false);
+  const setProjects = useAppStore((state) => state.setProjects);
+  const setFeedPosts = useAppStore((state) => state.setFeedPosts);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const hasInitializedRef = useRef<boolean>(false);
 
   useEffect(() => {
+    if (hasInitializedRef.current) {
+      console.log('App initialization skipped because it already ran');
+      return;
+    }
+
+    hasInitializedRef.current = true;
+
     const initApp = async () => {
       try {
         console.log('Starting app initialization...');
         
-        // Initialize database
         await initializeDatabase();
         console.log('Database initialized successfully');
         
-        // Initialize sample data
         await initializeSampleData();
         console.log('Sample data initialized');
         
-        // Load projects from database
         const dbProjects = await listProjects();
         console.log('Loaded projects from database:', dbProjects.length);
         
-        // Merge with mock projects for explore feed
         setProjects(mockProjects);
         setFeedPosts(generateFeedPosts(mockProjects));
         
@@ -158,7 +163,6 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
         console.error('Failed to initialize app:', error);
         setInitError(error instanceof Error ? error.message : 'Unknown initialization error');
       } finally {
-        // Always hide splash screen
         try {
           await SplashScreen.hideAsync();
         } catch (splashError) {
@@ -166,9 +170,9 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
         }
       }
     };
-    
-    initApp();
-  }, [setProjects, setFeedPosts]);
+
+    void initApp();
+  }, [setFeedPosts, setProjects]);
 
   if (initError) {
     return (

@@ -13,7 +13,8 @@ type Tab = 'recent' | 'subscribed' | 'bookmarks' | 'favorites';
 
 export default function LibraryMoreScreen() {
   const { activeTheme } = useTheme();
-  const { projects, setCurrentProject } = useAppStore();
+  const projects = useAppStore((state) => state.projects);
+  const setCurrentProject = useAppStore((state) => state.setCurrentProject);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ tab?: string }>();

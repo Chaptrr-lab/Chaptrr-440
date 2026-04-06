@@ -76,7 +76,11 @@ function RichContentBlock({ block }: RichContentBlockProps) {
 export default function PublicProjectScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
   const insets = useSafeAreaInsets();
-  const { projects, likedProjects, toggleLike, setCurrentProject, setCurrentChapterIndex } = useAppStore();
+  const projects = useAppStore((state) => state.projects);
+  const likedProjects = useAppStore((state) => state.likedProjects);
+  const toggleLike = useAppStore((state) => state.toggleLike);
+  const setCurrentProject = useAppStore((state) => state.setCurrentProject);
+  const setCurrentChapterIndex = useAppStore((state) => state.setCurrentChapterIndex);
   const [storedChapters, setStoredChapters] = useState<StoredChapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);

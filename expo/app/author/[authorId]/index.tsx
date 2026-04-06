@@ -21,7 +21,8 @@ export default function AuthorProfileScreen() {
   const [author, setAuthor] = useState<Creator | null>(null);
   const [authorProjects, setAuthorProjects] = useState<Project[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
-  const { projects, setCurrentProject } = useAppStore();
+  const projects = useAppStore((state) => state.projects);
+  const setCurrentProject = useAppStore((state) => state.setCurrentProject);
   const { activeTheme } = useTheme();
 
   useEffect(() => {

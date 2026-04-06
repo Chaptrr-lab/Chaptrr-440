@@ -38,7 +38,9 @@ export default function ReaderScreen() {
   const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastScrollY = useRef(0);
   const insets = useSafeAreaInsets();
-  const { currentProject, currentChapterIndex, setCurrentChapterIndex } = useAppStore();
+  const currentProject = useAppStore((state) => state.currentProject);
+  const currentChapterIndex = useAppStore((state) => state.currentChapterIndex);
+  const setCurrentChapterIndex = useAppStore((state) => state.setCurrentChapterIndex);
 
   useEffect(() => {
     const loadData = async () => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -96,7 +96,9 @@ const SHELF_TABS: { key: Shelf; label: string }[] = [
 export default function LibraryScreen() {
   const [activeShelf, setActiveShelf] = useState<Shelf>('reading');
   const insets = useSafeAreaInsets();
-  const { projects, setCurrentProject, setCurrentChapterIndex } = useAppStore();
+  const projects = useAppStore((state) => state.projects);
+  const setCurrentProject = useAppStore((state) => state.setCurrentProject);
+  const setCurrentChapterIndex = useAppStore((state) => state.setCurrentChapterIndex);
   const { activeTheme } = useTheme();
 
   // Distribute mock projects across shelves for demo

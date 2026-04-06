@@ -9,7 +9,7 @@ import { ArrowLeft } from 'lucide-react-native';
 
 export default function PurchasesScreen() {
   const { activeTheme } = useTheme();
-  const { projects } = useAppStore();
+  const projects = useAppStore((state) => state.projects);
 
   const purchases = [
     { id: '1', project: projects[0], chapterTitle: 'Bali Beginnings', amount: 5, date: 'Jan 15, 2024' },
